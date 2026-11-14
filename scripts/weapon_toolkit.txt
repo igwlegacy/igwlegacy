@@ -9,6 +9,7 @@ weight		1
 //============================
 //Test weapon animation Script
 //=============================
+
 //activity               first frame    numframes     loopingframes 		FPS
 //----------------------------------------------------------------------------------
 ACT_IDLE				8	18	18	10
@@ -20,7 +21,6 @@ ACT_HOLSTER				59	5	0	25
 
 //events
 //-----------------------------------------------------------------------------------
-
 event
 {
 	ID			EVENT_SOUND
@@ -29,5 +29,4 @@ event
 	data		"ifbitset $playerflag 8
 				sound/weapons/toolkit/toolkit_fire.wav
 			endif"
-
 }

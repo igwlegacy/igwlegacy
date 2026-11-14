@@ -1,7 +1,7 @@
-viewmodel	"models/weapons/v_40rte.md3"
-worldmodel	"models/weapons/w_40rte.md3"
-Re-enable	this	when/if	anim	is	fixed
-//addonmodel	"models/weapons/w_40rte1.md3"
+viewmodel		"models/weapons/v_40rte.md3"
+worldmodel		"models/weapons/w_40rte.md3"
+//Re-enable	this	when/if	anim	is	fixed
+//addonmodel		"models/weapons/w_40rte1.md3"
 clipsize		1
 primary_ammo	AMMO_RGE
 bucket			3
@@ -12,6 +12,7 @@ weight			5
 //============================
 //Test weapon animation Script
 //=============================
+
 //activity               first frame    numframes     loopingframes 		FPS
 //----------------------------------------------------------------------------------
 ACT_IDLE			48	20	19	10

@@ -10,6 +10,7 @@ weight			1
 //============================
 //Test weapon animation Script
 //=============================
+
 //activity               first frame    numframes     loopingframes 		FPS
 //----------------------------------------------------------------------------------
 ACT_IDLE			48	20	19	10

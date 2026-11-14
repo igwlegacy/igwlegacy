@@ -10,6 +10,7 @@ clipsize		0
 //============================
 //Test weapon animation Script
 //=============================
+
 //activity               first frame    numframes     loopingframes 		FPS
 //----------------------------------------------------------------------------------
 ACT_IDLE			10	20	19	10
@@ -17,6 +18,7 @@ ACT_PRIME			50	46	0	25
 ACT_PRIMARYATTACK	97	10	0	25
 ACT_DRAW			31	19	0	25
 ACT_HOLSTER			0	10	0	25
+
 //events
 //-----------------------------------------------------------------------------------
 event
@@ -26,7 +28,6 @@ event
 	frames		75
 	data		"sound/weapons/molotov_ignite.wav"
 }
-
 event
 {
 	ID			EVENT_SWITCH
@@ -34,8 +35,6 @@ event
 	frames		31
 	data		"0 3"
 }
-
-
 event
 {
 	ID			EVENT_SWITCH
@@ -43,8 +42,6 @@ event
 	frames		10
 	data		"0 3"
 }
-
-
 event
 {
 	ID			EVENT_SWITCH
@@ -52,8 +49,6 @@ event
 	frames		81
 	data		"0 3"
 }
-
-
 event
 {
 	ID			EVENT_SWITCH
@@ -61,8 +56,6 @@ event
 	frames		51
 	data		"0 3"
 }
-
-
 event
 {
 	ID			EVENT_SWITCH

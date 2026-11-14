@@ -13,10 +13,9 @@ ACT_PRIME			50	27	0	25
 ACT_PRIMARYATTACK	78	10	0	25
 ACT_DRAW			31	19	0	25
 ACT_HOLSTER			0	10	0	25
+
 //events
 //-----------------------------------------------------------------------------------
-
-
 event
 {
 	ID			EVENT_SWITCH
@@ -24,7 +23,6 @@ event
 	frames		78
 	data		"0 Grenade"
 }
-
 event
 {
 	ID			EVENT_SWITCH

@@ -10,6 +10,7 @@ clipsize		0
 //============================
 //Test weapon animation Script
 //=============================
+
 //activity               first frame    numframes     loopingframes 		FPS
 //----------------------------------------------------------------------------------
 ACT_IDLE			0	20	19	10
@@ -19,7 +20,6 @@ ACT_HOLSTER			33	10	0	25
 
 //events
 //-----------------------------------------------------------------------------------
-
 event
 {
 	ID			EVENT_SWITCH
@@ -27,7 +27,6 @@ event
 	frames		25
 	data		"0 1"
 }
-
 event
 {
 	ID			EVENT_SWITCH
@@ -35,7 +34,6 @@ event
 	frames		33
 	data		"1 1"
 }
-
 event
 {
 	ID			EVENT_SWITCH
@@ -43,7 +41,6 @@ event
 	frames		0
 	data		"1 1"
 }
-
 event
 {
 	ID			EVENT_SWITCH

@@ -7,6 +7,8 @@ bucketpos		1
 weaponorder		12
 weight			6
 
+//activity               first frame    numframes     loopingframes 		FPS
+//----------------------------------------------------------------------------------
 ACT_IDLE			0	20	19	10
 ACT_PRIMARYATTACK	60	8	8	100
 ACT_DRAW			280	10	0	25
@@ -16,7 +18,8 @@ ACT_DEPLOYED		40	20	19	10
 ACT_UNDEPLOY		250	10	0	25
 ACT_HOLSTER			270	10	0	25
 
-
+//events
+//-----------------------------------------------------------------------------------
 event
 {
 	ID			EVENT_SOUND
@@ -59,7 +62,6 @@ event
 	frames		206
 	data		"sound\weapons\heavymachgun\hmg_cock.wav"
 }
-
 event
 {
 	ID			EVENT_SWITCH
@@ -67,5 +69,3 @@ event
 	frames		140
 	data		"1 ALL"
 }
-
-

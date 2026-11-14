@@ -8,7 +8,12 @@ bucketpos		2
 weaponorder		20
 weight			6
 
+//activity               first frame    numframes     loopingframes 		FPS
+//----------------------------------------------------------------------------------
 ACT_IDLE			0	10	9	8
 ACT_PRIMARYATTACK	20	10	10	25
 ACT_DRAW			15	5	0	25
 ACT_HOLSTER			10	5	0	25
+
+//events
+//-----------------------------------------------------------------------------------

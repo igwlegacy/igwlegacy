@@ -1,5 +1,5 @@
-viewmodel	"models/weapons/v_lrifle.md3"
-worldmodel	"models/weapons/w_lrifle.md3"
+viewmodel		"models/weapons/v_lrifle.md3"
+worldmodel		"models/weapons/w_lrifle.md3"
 //addonmodel	"models/weapons/w_lrifle1.md3"
 clipsize		1
 primary_ammo	AMMO_LIGHTRIFLE
@@ -8,6 +8,8 @@ bucketpos		1
 weaponorder		5
 weight			3
 
+//activity               first frame    numframes     loopingframes 		FPS
+//----------------------------------------------------------------------------------
 ACT_IDLE			0	20	19	10
 ACT_PRIMARYATTACK	23	17	0	25
 ACT_DRAW			41	19	0	25
@@ -18,6 +20,8 @@ ACT_DEPLOY			135	5	0	25
 ACT_DEPLOYED		140	5	1	12
 ACT_UNDEPLOY		140	5	0	-25
 
+//events
+//-----------------------------------------------------------------------------------
 event
 {
 	ID			EVENT_SWITCH
