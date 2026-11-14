@@ -7,6 +7,8 @@ import subprocess
 import tempfile
 import zipfile
 
+from doit.tools import config_changed
+
 
 ROOT = Path(__file__).resolve().parent
 PATCHER_SOURCE = ROOT / "monkey-patcher"
@@ -14,6 +16,13 @@ PATCHER_BUILD = PATCHER_SOURCE / "build"
 PATCHER = PATCHER_BUILD / "igw-monkey-patcher"
 INPUT_DLLS = [ROOT / "input-dlls" / name for name in ("gamex86.dll", "cgamex86.dll", "uix86.dll")]
 DIST = ROOT / "dist"
+ASSET_BUILD = ROOT / "build" / "assets"
+TEXTURE_RULES = {
+    "textures/ui/mmbg1ws.dds": ("wallpaper.png", "2048x2048"),
+    "textures/ui/mmbg1.dds": ("wallpaper.png", "2048x2048"),
+    "textures/ui/mmtoplogo.dds": ("logo.png", "512x512"),
+    "textures/ui/mmtoplogoSE.dds": ("logo.png", "512x512"),
+}
 
 DOIT_CONFIG = {"default_tasks": ["dist"]}
 
@@ -25,15 +34,26 @@ def _build_patcher():
     subprocess.run(["meson", "compile", "-C", str(PATCHER_BUILD)], check=True)
 
 
+def _convert_texture(source, size, output):
+    # Generated textures stay outside gamedir, which remains a source tree.
+    output.parent.mkdir(parents=True, exist_ok=True)
+    subprocess.run(
+        ["idt3tc", "img", str(source), "--resize", size, "--save", str(output)],
+        check=True,
+    )
+
+
 def _package_gamedir(output):
-    """Write a reproducible PK3 with paths relative to gamedir/."""
+    """Combine gamedir and generated textures in a reproducible PK3."""
     gamedir = ROOT / "gamedir"
+    sources = {source.relative_to(gamedir).as_posix(): source for source in gamedir.rglob("*")}
+    # Replace existing texture entries rather than writing duplicate ZIP names.
+    sources.update({name: ASSET_BUILD / name for name in TEXTURE_RULES})
     with zipfile.ZipFile(output, "w") as archive:
         # Stable ordering and fixed metadata keep filesystem timestamps and
         # permissions from changing the archive bytes.
-        for source in sorted(gamedir.rglob("*")):
+        for name, source in sorted(sources.items()):
             is_directory = source.is_dir()
-            name = source.relative_to(gamedir).as_posix()
             entry = zipfile.ZipInfo(
                 name + "/" if is_directory else name,
                 date_time=(1980, 1, 1, 0, 0, 0),
@@ -74,12 +94,26 @@ def task_monkey_patcher():
     }
 
 
+def task_textures():
+    """Convert raw PNG assets into the DDS textures used by the game."""
+    for name, (filename, size) in TEXTURE_RULES.items():
+        source = ROOT / "raw-assets" / filename
+        output = ASSET_BUILD / name
+        yield {
+            "name": Path(name).name,
+            "actions": [(_convert_texture, [source, size, output])],
+            "file_dep": [str(source)],
+            "targets": [str(output)],
+            "uptodate": [config_changed({"resize": size})],
+        }
+
+
 def task_dist():
     """Package gamedir as igwlegacy.pk3 and add patched DLLs in dist/."""
     return {
         "actions": [_assemble_dist],
-        "task_dep": ["monkey_patcher"],
-        "file_dep": list(map(str, INPUT_DLLS)),
+        "task_dep": ["monkey_patcher", "textures"],
+        "file_dep": list(map(str, INPUT_DLLS)) + [str(ASSET_BUILD / name) for name in TEXTURE_RULES],
         "targets": [str(DIST / "igwlegacy.pk3")] + [str(DIST / path.name) for path in INPUT_DLLS],
         "uptodate": [False],
     }
