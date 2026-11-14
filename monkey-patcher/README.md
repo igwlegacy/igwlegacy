@@ -2,7 +2,7 @@
 
 A native command line tool written in C17 that patches Iron Grip: Warlord's Windows game DLLs on disk. Build it with Meson on Linux or Windows. It needs only the C standard library; Wine, a disassembler, the game source, and a Windows cross compiler are not needed to run it.
 
-The configuration is hardcoded in [patches/cvar.c](patches/cvar.c) for CVAR patches and [patches/code.c](patches/code.c) for instruction and function patches. It supports changing CVAR defaults, forcing CVAR values, replacing instruction bytes, and making a verified void function return immediately. Outputs are separate DLL files. The game does not need a loader or a background patching process to use them.
+Each functionality has its own C file in [patches/](patches/), such as [run_pitch.c](patches/run_pitch.c), [screen_shake.c](patches/screen_shake.c), and [damage_kick.c](patches/damage_kick.c). It supports changing CVAR defaults, forcing CVAR values, replacing instruction bytes, and making a verified void function return immediately. Outputs are separate DLL files. The game does not need a loader or a background patching process to use them.
 
 ## Build and use
 

@@ -1,7 +1,30 @@
-#include "patcher.h"
+#include "patches.h"
 
 #include <stdio.h>
 #include <string.h>
+
+/* Keep rule order stable: it determines the generated CVAR payload layout.
+ * Null sentinels allow either registry to be empty when disabling patches.
+ */
+const cvar_rule_t *const cvar_rules[] = {
+    &patch_run_pitch,
+    &patch_run_roll,
+    &patch_bob_pitch,
+    &patch_bob_roll,
+    &patch_bob_up,
+    NULL,
+};
+const size_t cvar_rule_count = ARRAY_SIZE(cvar_rules) - 1;
+
+const code_rule_t *const code_rules[] = {
+    &patch_screen_shake,
+    &patch_damage_kick[0],
+    &patch_damage_kick[1],
+    &patch_damage_kick[2],
+    &patch_landing_dip,
+    NULL,
+};
+const size_t code_rule_count = ARRAY_SIZE(code_rules) - 1;
 
 static unsigned char ascii_lower(unsigned char c)
 {
@@ -21,7 +44,7 @@ static bool same_name(const char *a, const char *b)
 bool rules_validate(void)
 {
     for (size_t i = 0; i < cvar_rule_count; ++i) {
-        const cvar_rule_t *rule = &cvar_rules[i];
+        const cvar_rule_t *rule = cvar_rules[i];
         if ((rule->module != GAME && rule->module != CGAME) ||
             !rule->name || !rule->name[0] || !rule->value ||
             strlen(rule->name) > 255 || strlen(rule->value) > 255 ||
@@ -30,22 +53,22 @@ bool rules_validate(void)
             return false;
         }
         for (size_t j = 0; j < i; ++j) {
-            if (rule->module == cvar_rules[j].module &&
-                same_name(rule->name, cvar_rules[j].name)) {
+            if (rule->module == cvar_rules[j]->module &&
+                same_name(rule->name, cvar_rules[j]->name)) {
                 fprintf(stderr, "Duplicate CVAR rule: %s\n", rule->name);
                 return false;
             }
         }
     }
     for (size_t i = 0; i < code_rule_count; ++i) {
-        const code_rule_t *rule = &code_rules[i];
+        const code_rule_t *rule = code_rules[i];
         if ((rule->module != GAME && rule->module != CGAME) ||
             !rule->size || rule->size > PATCH_MAX) {
             fprintf(stderr, "Invalid code rule %zu\n", i);
             return false;
         }
         for (size_t j = 0; rule->enabled && j < i; ++j) {
-            const code_rule_t *other = &code_rules[j];
+            const code_rule_t *other = code_rules[j];
             if (other->enabled && rule->module == other->module &&
                 (uint64_t)rule->rva < (uint64_t)other->rva + other->size &&
                 (uint64_t)other->rva < (uint64_t)rule->rva + rule->size) {

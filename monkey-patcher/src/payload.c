@@ -152,7 +152,7 @@ bool payload_build(payload_t *payload, const profile_t *p, uint32_t rva)
     emit(&e, "IGWMONK1", 8);
     word(&e, 0); /* The engine syscall pointer, filled by dllEntry. */
     for (size_t i = 0; i < cvar_rule_count; ++i) {
-        const cvar_rule_t *rule = &cvar_rules[i];
+        const cvar_rule_t *rule = cvar_rules[i];
         if (rule->module != p->module)
             continue;
         records[i].name = (uint32_t)emit(&e, rule->name, strlen(rule->name) + 1);
@@ -190,7 +190,7 @@ bool payload_build(payload_t *payload, const profile_t *p, uint32_t rva)
 
     e.labels[REGISTER] = payload->size;
     for (size_t i = 0; i < cvar_rule_count; ++i) {
-        const cvar_rule_t *rule = &cvar_rules[i];
+        const cvar_rule_t *rule = cvar_rules[i];
         const record_t *r = &records[i];
         if (rule->module != p->module)
             continue;
@@ -222,7 +222,7 @@ bool payload_build(payload_t *payload, const profile_t *p, uint32_t rva)
     BYTES(&e, 0x8b, 0x7d, 12, 0x85, 0xff); /* edi=vmCvar; test edi,edi */
     equal_jump(&e, PASS);
     for (size_t i = 0; i < cvar_rule_count; ++i) {
-        if (cvar_rules[i].module != p->module || cvar_rules[i].mode != CVAR_FORCE)
+        if (cvar_rules[i]->module != p->module || cvar_rules[i]->mode != CVAR_FORCE)
             continue;
         BYTES(&e, 0x8b, 0x07, 0x3b, 0x83); /* eax=[vmCvar]; cmp eax,[saved handle] */
         word(&e, records[i].handle);
@@ -236,7 +236,7 @@ bool payload_build(payload_t *payload, const profile_t *p, uint32_t rva)
 
     e.labels[SET] = payload->size;
     for (size_t i = 0; i < cvar_rule_count; ++i) {
-        if (cvar_rules[i].module != p->module || cvar_rules[i].mode != CVAR_FORCE)
+        if (cvar_rules[i]->module != p->module || cvar_rules[i]->mode != CVAR_FORCE)
             continue;
         size_t next = match_name(&e, 12, records[i].name);
         address_eax(&e, records[i].value);

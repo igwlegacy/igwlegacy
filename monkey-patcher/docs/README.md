@@ -1,5 +1,20 @@
 ## Configuration
 
+Each functionality has a separate file in `patches/`:
+
+| File | Functionality |
+| --- | --- |
+| [run_pitch.c](../patches/run_pitch.c) | Pitch from forward and backward speed |
+| [run_roll.c](../patches/run_roll.c) | Roll from sideways speed |
+| [bob_pitch.c](../patches/bob_pitch.c) | Walking pitch bob |
+| [bob_roll.c](../patches/bob_roll.c) | Walking roll bob |
+| [bob_up.c](../patches/bob_up.c) | Walking eye-height bob |
+| [screen_shake.c](../patches/screen_shake.c) | Explosion and death shake |
+| [damage_kick.c](../patches/damage_kick.c) | Damage pitch and roll, including the return phase |
+| [landing_dip.c](../patches/landing_dip.c) | Eye-height dip on landing |
+
+Edit the rule definitions in the corresponding file and rebuild. `src/rules.c` registers the rules by reference and validates them. Comment out a registry reference to omit that rule. For a new functionality, add its `.c` file to `meson.build`, declare its rules in `patches/patches.h`, and reference them in `src/rules.c`. One functionality can supply several CVAR or instruction rules.
+
 | Setting                                 | Implementation                                                            |
 | ---                                     | ---                                                                       |
 | `cg_runpitch`, `cg_runroll`             | Force `"0"`                                                               |
@@ -12,7 +27,7 @@ Weapon recoil and weapon model sway retain their original behavior. Recoil chang
 
 ### CVAR mapping
 
-Edit `cvar_rules[]` in [patches/cvar.c](../patches/cvar.c), then rebuild. Each entry specifies the module that registers the CVAR, its name, a string value, and the mode:
+Edit the `cvar_rule_t` definition in the corresponding functionality file, then rebuild. Each entry specifies the module that registers the CVAR, its name, a string value, and the mode:
 
 ```c
 { CGAME, "cg_bobup", "0", CVAR_FORCE },
@@ -21,7 +36,7 @@ Edit `cvar_rules[]` in [patches/cvar.c](../patches/cvar.c), then rebuild. Each e
 { GAME, "g_bodytime", "0", CVAR_FORCE },
 ```
 
-The last three entries above are examples, not active preset rules. Keep the sentinel at the end of the array. Delete or comment out individual rules to leave those CVARs alone. String values can be longer than the original defaults because the patcher appends new storage instead of modifying shared string literals. Names and values have a 255-byte limit, and there can be at most 128 rules. Duplicate names within one module are rejected without regard to ASCII case.
+The last three entries above are examples, not active preset rules. The registry references the feature definitions; its null sentinel permits an empty mapping. Remove individual registry references to leave those CVARs alone. String values can be longer than the original defaults because the patcher appends new storage instead of modifying shared string literals. Names and values have a 255-byte limit, and there can be at most 128 rules. Duplicate names within one module are rejected without regard to ASCII case.
 
 `CVAR_DEFAULT` replaces the fallback string passed to the engine during registration. Existing saved settings and subsequent changes still take precedence. It does not force a value.
 
@@ -31,7 +46,7 @@ Rules activate when the selected DLL registers the named CVAR. They cover the ma
 
 ### Instruction and function patches
 
-`code_rules[]` in [patches/code.c](../patches/code.c) holds an enable switch, an RVA, expected bytes, and replacement bytes for each patch. Set `enabled` to `false` to skip a patch. Each rule can cover up to 16 bytes; enabled overlapping ranges are rejected. The expected bytes must match before output is written.
+Each `code_rule_t` definition in a functionality file holds an enable switch, an RVA, expected bytes, and replacement bytes for an instruction patch. Set `enabled` to `false` to skip a patch. Each rule can cover up to 16 bytes; enabled overlapping ranges are rejected. The expected bytes must match before output is written.
 
 The supplied shake patch replaces the first opcode with `ret` and checks the rest of the original instructions. This is valid because reverse engineering established that this function returns void and its callers clean up the stack. A function that returns a value, uses a different calling convention, or has required side effects needs a different patch. Address operands in replacement code must keep the existing relocation positions valid; arbitrary new absolute addresses need relocation support that the generic byte patch table does not provide.
 

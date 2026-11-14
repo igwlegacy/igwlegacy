@@ -267,7 +267,7 @@ bool image_patch(image_t *image)
     printf("%s: known retail DLL\n", p->name);
     bool has_cvars = false;
     for (size_t i = 0; i < cvar_rule_count; ++i) {
-        const cvar_rule_t *r = &cvar_rules[i];
+        const cvar_rule_t *r = cvar_rules[i];
         if (r->module != p->module)
             continue;
         printf("  %s %s = \"%s\"\n", r->mode == CVAR_FORCE ? "force" : "default", r->name, r->value);
@@ -277,7 +277,7 @@ bool image_patch(image_t *image)
     if (has_cvars && !add_payload(image))
         return false;
     for (size_t i = 0; i < code_rule_count; ++i) {
-        const code_rule_t *r = &code_rules[i];
+        const code_rule_t *r = code_rules[i];
         size_t offset;
         if (!r->enabled || r->module != p->module)
             continue;

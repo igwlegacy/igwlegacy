@@ -19,7 +19,7 @@ static void usage(FILE *out)
           "\n"
           "Writes NAME.patched.dll beside each input, or its original basename\n"
           "inside an existing output directory. Never overwrites a file.\n"
-          "Edit patches/cvar.c or patches/code.c and rebuild to change patches.\n", out);
+          "Edit the feature files in patches/ and rebuild to change patches.\n", out);
 }
 
 static const char *basename_of(const char *path)
@@ -61,12 +61,12 @@ static char *output_path(const char *input, const char *directory)
 static void list_rules(void)
 {
     for (size_t i = 0; i < cvar_rule_count; ++i) {
-        const cvar_rule_t *r = &cvar_rules[i];
+        const cvar_rule_t *r = cvar_rules[i];
         printf("%s: %s %s = \"%s\"\n", r->module == GAME ? "gamex86" : "cgamex86",
                r->mode == CVAR_FORCE ? "force" : "default", r->name, r->value);
     }
     for (size_t i = 0; i < code_rule_count; ++i) {
-        const code_rule_t *r = &code_rules[i];
+        const code_rule_t *r = code_rules[i];
         printf("%s: %s code %s\n", r->module == GAME ? "gamex86" : "cgamex86",
                r->enabled ? "enabled" : "disabled", r->name);
     }
