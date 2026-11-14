@@ -28,3 +28,10 @@ ACT_DEPLOYED		0	20	19	25
 ACT_UNDEPLOY		41	7	0	23
 
 //events----------------------------------------------------------------------------
+event
+{
+	ID			EVENT_SOUND
+	numFrames	1
+	frames		150
+	data		"sound/weapons/40RGE/slide_in.wav"
+}
