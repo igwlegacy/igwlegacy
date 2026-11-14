@@ -14,13 +14,22 @@ clipsize		0
 //activity               first frame    numframes     loopingframes 		FPS
 //----------------------------------------------------------------------------------
 ACT_IDLE			10	20	19	10
-ACT_PRIME			50	46	0	25
+// ACT_PRIME			50	46	0	15 //OG
+ACT_PRIME			50	46	0	24.5
 ACT_PRIMARYATTACK	97	10	0	25
-ACT_DRAW			31	19	0	25
+// ACT_DRAW			31	19	0	25 //OG
+ACT_DRAW			31	19	0	15
 ACT_HOLSTER			0	10	0	25
 
 //events
 //-----------------------------------------------------------------------------------
+event
+{
+	ID			EVENT_SOUND
+	numFrames	1
+	frames		60
+	data		"sound\zippo.wav"
+}
 event
 {
 	ID			EVENT_SHOOT

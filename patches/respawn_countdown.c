@@ -1,5 +1,7 @@
 #include "patches.h"
 
+// fixes https://github.com/igwlegacy/igwlegacy/issues/4
+
 /* Apply all six rules together: the calculation and print hooks share EBX. */
 static const code_rule_t patch_respawn_countdown[] = {
     /* CG_DrawDeathScreen: retain the unscaled remaining milliseconds in

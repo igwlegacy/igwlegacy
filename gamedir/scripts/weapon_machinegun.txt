@@ -41,7 +41,6 @@ event
 	frames		164
 	data		"1 0"
 }
-
 //Reload sounds
 event
 {
@@ -61,6 +60,6 @@ event
 {
 	ID			EVENT_SOUND
 	numFrames	1
-	frames		110
-	data		"sound\weapons\lmg2\cock.wav"
+	frames		109
+	data		"sound\weapons\heavymachgun\hmg_cock.wav"
 }

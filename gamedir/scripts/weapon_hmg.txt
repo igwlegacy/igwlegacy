@@ -14,9 +14,9 @@ ACT_PRIMARYATTACK	60	8	8	100
 ACT_DRAW			280	10	0	25
 ACT_HOLSTER			270	10	0	25
 ACT_RELOAD			70	180	0	25
-ACT_DEPLOY			20	20	0	25
+ACT_DEPLOY			20	20	0	24
 ACT_DEPLOYED		40	20	19	10
-ACT_UNDEPLOY		250	10	0	25
+ACT_UNDEPLOY		250	10	0	40
 
 //events
 //-----------------------------------------------------------------------------------

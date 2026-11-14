@@ -14,10 +14,25 @@ weight			2
 //activity               first frame    numframes     loopingframes 		FPS
 //----------------------------------------------------------------------------------
 ACT_IDLE			0	20	0	10
-ACT_PRIMARYATTACK	21	10	0	25
+ACT_PRIMARYATTACK	21	9	0	25
 ACT_DRAW			76	9	0	25
 ACT_HOLSTER			85	6	0	25
 ACT_RELOAD			30	45	0	25
 
 //events
 //-----------------------------------------------------------------------------------
+//Reload sounds
+event
+{
+	ID			EVENT_SOUND
+	numFrames	1
+	frames		30
+	data		"sound\weapons\lmg2\clipout.wav"
+}
+event
+{
+	ID			EVENT_SOUND
+	numFrames	1
+	frames		60
+	data		"sound\weapons\lmg2\clipin.wav"
+}

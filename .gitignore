@@ -7,6 +7,7 @@ dist/
 /build/
 .doit.db*
 __pycache__/
+.cache
 
 # pixi environments
 .pixi/*

@@ -44,6 +44,7 @@ event
 {
 	ID			EVENT_SOUND
 	numFrames	1
-	frames		89
+	// frames		89 //OG
+	frames		88
 	data		"sound\weapons\lmg2\cock.wav"
 }
