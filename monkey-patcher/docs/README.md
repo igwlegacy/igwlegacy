@@ -15,7 +15,7 @@ Each functionality has a separate file in `patches/` at the repository root:
 | [death_camera.c](../../patches/death_camera.c) | Immediate spectator movement after death, without automatic camera rise |
 | [respawn_countdown.c](../../patches/respawn_countdown.c) | Respawn countdown rounded up to seconds, with text expiring at the respawn deadline |
 | [shotgun.c](../../patches/shotgun.c) | Editable hardcoded shotgun stats and pellet damage falloff |
-| [hmg_reload.c](../../patches/hmg_reload.c) | HMG reloading while undeployed, preserving deployment state |
+| [hmg_reload.c](../../patches/hmg_reload.c) | HMG reloading while undeployed and cancellation by undeploying |
 | [main_menu_ad.c](../../patches/main_menu_ad.c) | Main-menu promotional panel, ticker, and update request |
 | [valuable_markers.c](../../patches/valuable_markers.c) | Persistent models at every valuable spawn position |
 
@@ -70,7 +70,7 @@ The values were traced in the `reigw` source: `src/code/game/g_weapon.c` (`Shotg
 
 ### HMG reloading
 
-The HMG (`WP_HEAVYMG`) can reload while undeployed, either automatically with an empty clip or manually with a partially filled clip and reserve ammo. It stays undeployed afterward; a reload started while deployed still finishes deployed. Reload duration, Firepower Upgrade scaling and ammunition transfer keep their original behavior.
+The HMG (`WP_HEAVYMG`) can reload while undeployed, either automatically with an empty clip or manually with a partially filled clip and reserve ammo. It stays undeployed afterward; a reload started while deployed still finishes deployed. Pressing secondary attack during a deployed reload cancels the reload and undeploys, even with an empty clip. Cancellation transfers no ammunition and uses the normal undeploy animation and timing. Reload duration, Firepower Upgrade scaling and ammunition transfer on completion keep their original behavior.
 
 Install the patched `gamex86.dll` on the server and `cgamex86.dll` on clients together. [hmg_reload.c](../../patches/hmg_reload.c) selects the existing undeployed reload state for an undeployed HMG, allowing the original reload completion code to restore its ready state. Comment out `REGISTER_CODE_RULES(patch_hmg_reload)` and rebuild to omit this feature.
 

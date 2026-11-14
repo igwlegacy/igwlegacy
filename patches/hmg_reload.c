@@ -33,10 +33,45 @@
       { 0xc7, 0x81, B4(0x94), B4(4) }, \
       { 0x8b, 0x54, 0x24, 0x0c, 0x89, 0x91, B4(0x94) } }
 
+/* PM_Weapon's secondary-button cancellation calls PM_AmmoForAttack with
+ * ECX = weapon and primary = false. For the HMG, allow cancellation even
+ * with an empty clip and return WEAPON_DEPLOYED in EDX. The existing
+ * cancellation clears weaponTime; restoring deployed instead of ready
+ * lets the following secondary-attack handler perform normal undeployment.
+ * The clip is filled only by PM_FinishReload, which this path skips.
+ * Undeployed HMG reloads use state 11 and never enter this state-4 check.
+ *
+ * Other weapons still call PM_AmmoForAttack with primary = false. CDQ
+ * makes EDX zero whenever the returned ammo count is positive, preserving
+ * their cancellation to WEAPON_READY; nonpositive results skip the store.
+ * The extra argument is removed with pop ECX, which is scratch here.
+ * Helpers occupy padding after PM_FinishDeploy and PM_AmmoForAttack.
+ * Keep each helper pair, call and state store enabled together.
+ */
+#define HMG_CANCEL_RELOAD(module, helper, fallback, ammo, site, store, zero_modrm) \
+    { module, true, "HMG reload: undeploy cancellation helper", helper, 11, \
+      { 0xcc, 0xcc, 0xcc, 0xcc, 0xcc, 0xcc, \
+        0xcc, 0xcc, 0xcc, 0xcc, 0xcc }, \
+      { 0x83, 0xf9, 0x0a, 0x75, fallback - (helper + 5u), \
+        0x6a, 0x07, 0x5a, 0x8b, 0xc2, 0xc3 } }, \
+    { module, true, "HMG reload: other weapons' cancellation helper", fallback, 10, \
+      { 0xcc, 0xcc, 0xcc, 0xcc, 0xcc, \
+        0xcc, 0xcc, 0xcc, 0xcc, 0xcc }, \
+      { 0x6a, 0x00, 0xe8, B4(ammo - (fallback + 7u)), 0x59, 0x99, 0xc3 } }, \
+    { module, true, "HMG reload: allow cancellation without ammo", site, 5, \
+      { 0xe8, B4(ammo - (site + 5u)) }, \
+      { 0xe8, B4(helper - (site + 5u)) } }, \
+    { module, true, "HMG reload: restore deployment before cancellation", store, 6, \
+      { 0x89, zero_modrm, B4(0x94) }, { 0x89, 0x91, B4(0x94) } }
+
 /* Server authority and client prediction must use the same reload states. */
 static const code_rule_t patch_hmg_reload[] = {
     HMG_RELOAD(GAME, 0x12d32u, 0x12e33u, 0x12e6bu),
     HMG_RELOAD(CGAME, 0x44d2u, 0x4633u, 0x460fu),
+    HMG_CANCEL_RELOAD(GAME, 0x134d5u, 0x13556u, 0x134e0u,
+                      0x1400au, 0x1401du, 0xa9),
+    HMG_CANCEL_RELOAD(CGAME, 0x4d05u, 0x4d86u, 0x4d10u,
+                      0x5808u, 0x581bu, 0x99),
 };
 
 REGISTER_CODE_RULES(patch_hmg_reload)
