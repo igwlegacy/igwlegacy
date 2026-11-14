@@ -16,13 +16,13 @@ weight			6
 //activity               first frame    numframes     loopingframes 		FPS
 //----------------------------------------------------------------------------------
 ACT_IDLE			18	20	19	10
+ACT_PRIME			135	50	0	25
 ACT_PRIMARYATTACK	0	3	3	25
 //ACT_PRIMARYATTACK2	3	10	0	25
 ACT_SECONDARYATTACK	140	57	0	25
 ACT_DRAW			205	9	0	25
 ACT_HOLSTER			211	10	0	25
 ACT_RELOAD			38	96	0	25
-ACT_PRIME			135	50	0	25
 
 //events
 //-----------------------------------------------------------------------------------
