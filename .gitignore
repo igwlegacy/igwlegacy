@@ -1,3 +1,10 @@
 *.dll
 games.log
 config.cfg
+
+input-dlls/
+dist/
+
+# pixi environments
+.pixi/*
+!.pixi/config.toml
