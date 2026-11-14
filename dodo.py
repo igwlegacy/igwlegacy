@@ -9,17 +9,26 @@ import zipfile
 
 from doit.tools import config_changed
 
-
 ROOT = Path(__file__).resolve().parent
 PATCHER_SOURCE = ROOT / "monkey-patcher"
 PATCHER_BUILD = PATCHER_SOURCE / "build"
 PATCHER = PATCHER_BUILD / "igw-monkey-patcher"
-INPUT_DLLS = [ROOT / "input-dlls" / name for name in ("gamex86.dll", "cgamex86.dll", "uix86.dll")]
+INPUT_DLLS = [
+    ROOT / "input-dlls" / name for name in ("gamex86.dll", "cgamex86.dll", "uix86.dll")
+]
 DIST = ROOT / "dist"
 ASSET_BUILD = ROOT / "build" / "assets"
 TEXTURE_RULES = {
-    "textures/ui/mmbg1ws.dds": ("wallpaper.png", "2048x2048"),
     "textures/ui/mmbg1.dds": ("wallpaper.png", "2048x2048"),
+    "textures/ui/mmbg1ws.dds": ("wallpaper.png", "2048x2048"),
+    "textures/ui/mmbottomedge1.dds": ("nothing.png", "256x256"),
+    "textures/ui/mmcorner.dds": ("nothing.png", "256x256"),
+    "textures/ui/mmcorner.dds": ("nothing.png", "256x256"),
+    "textures/ui/mmrightborder.dds": ("nothing.png", "256x256"),
+    "textures/ui/mmsideedge1.dds": ("nothing.png", "256x256"),
+    "textures/ui/mmsideedge2.dds": ("nothing.png", "256x256"),
+    "textures/ui/mmtopedge1.dds": ("nothing.png", "256x256"),
+    "textures/ui/mmtopleftpart.dds": ("nothing.png", "256x256"),
     "textures/ui/mmtoplogo.dds": ("logo.png", "512x512"),
     "textures/ui/mmtoplogoSE.dds": ("logo.png", "512x512"),
 }
@@ -30,7 +39,9 @@ DOIT_CONFIG = {"default_tasks": ["dist"]}
 def _build_patcher():
     # Meson and Ninja track source changes and avoid unnecessary compilation.
     if not (PATCHER_BUILD / "meson-private" / "coredata.dat").is_file():
-        subprocess.run(["meson", "setup", str(PATCHER_BUILD), str(PATCHER_SOURCE)], check=True)
+        subprocess.run(
+            ["meson", "setup", str(PATCHER_BUILD), str(PATCHER_SOURCE)], check=True
+        )
     subprocess.run(["meson", "compile", "-C", str(PATCHER_BUILD)], check=True)
 
 
@@ -46,7 +57,9 @@ def _convert_texture(source, size, output):
 def _package_gamedir(output):
     """Combine gamedir and generated textures in a reproducible PK3."""
     gamedir = ROOT / "gamedir"
-    sources = {source.relative_to(gamedir).as_posix(): source for source in gamedir.rglob("*")}
+    sources = {
+        source.relative_to(gamedir).as_posix(): source for source in gamedir.rglob("*")
+    }
     # Replace existing texture entries rather than writing duplicate ZIP names.
     sources.update({name: ASSET_BUILD / name for name in TEXTURE_RULES})
     with zipfile.ZipFile(output, "w") as archive:
@@ -113,7 +126,9 @@ def task_dist():
     return {
         "actions": [_assemble_dist],
         "task_dep": ["monkey_patcher", "textures"],
-        "file_dep": list(map(str, INPUT_DLLS)) + [str(ASSET_BUILD / name) for name in TEXTURE_RULES],
-        "targets": [str(DIST / "igwlegacy.pk3")] + [str(DIST / path.name) for path in INPUT_DLLS],
+        "file_dep": list(map(str, INPUT_DLLS))
+        + [str(ASSET_BUILD / name) for name in TEXTURE_RULES],
+        "targets": [str(DIST / "igwlegacy.pk3")]
+        + [str(DIST / path.name) for path in INPUT_DLLS],
         "uptodate": [False],
     }
