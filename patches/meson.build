@@ -7,6 +7,7 @@ patch_sources = files(
 	'screen_shake.c',
 	'damage_kick.c',
 	'landing_dip.c',
+	'death_camera.c',
 	'main_menu_ad.c',
 )
 

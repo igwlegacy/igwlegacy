@@ -12,6 +12,7 @@ Each functionality has a separate file in `patches/` at the repository root:
 | [screen_shake.c](../../patches/screen_shake.c) | Explosion and death shake |
 | [damage_kick.c](../../patches/damage_kick.c) | Damage pitch and roll, including the return phase |
 | [landing_dip.c](../../patches/landing_dip.c) | Eye-height dip on landing |
+| [death_camera.c](../../patches/death_camera.c) | Immediate spectator movement after death, without automatic camera rise |
 | [main_menu_ad.c](../../patches/main_menu_ad.c) | Main-menu promotional panel, ticker, and update request |
 
 Edit the rule definitions in the corresponding file and rebuild. `src/rules.c` registers the rules by reference and validates them. Comment out a registry reference to omit that rule. For a new functionality, add its `.c` file to `patches/meson.build`, declare its rules in `patches/patches.h`, and reference them in `src/rules.c`. One functionality can supply several CVAR or instruction rules.
@@ -23,9 +24,12 @@ Edit the rule definitions in the corresponding file and rebuild. `src/rules.c` r
 | Explosion and death shake               | Return immediately from the shake starter                                 |
 | Damage pitch and roll                   | Read an existing zero constant; HUD damage indicators retain their values |
 | Landing dip                             | Read the zero constant                                                    |
+| Death camera                            | Enter spectator movement immediately; omit the slow rise and spectator lift |
 | Main-menu promotion                     | Omit the panel's menu items, ticker, and update request                    |
 
-Weapon recoil and weapon model sway retain their original behavior. Recoil changes the actual aim in shared player movement code and would require corresponding server and client patches. The preset has no active `gamex86` rules, so its output is an unchanged copy until you enable a rule for that module.
+Weapon recoil and weapon model sway retain their original behavior. Recoil changes the actual aim in shared player movement code and would require corresponding server and client patches.
+
+Immediate death spectating requires the patched `gamex86.dll` on the server and `cgamex86.dll` on the client. The server creates the corpse and enables spectator movement on the first client update after death, without the 3000 ms delay or the upward relocation of up to 256 units. The client omits the 15-unit-per-second rise while awaiting the spectator state. The respawn timer remains unchanged.
 
 ### CVAR mapping
 
