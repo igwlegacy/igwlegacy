@@ -30,6 +30,11 @@ TEXTURE_RULES = {
     "textures/ui/mmtopleftpart.dds": ("nothing.png", "256x256"),
     "textures/ui/mmtoplogo.dds": ("logo.png", "512x512"),
     "textures/ui/mmtoplogoSE.dds": ("logo.png", "512x512"),
+    # The shader references the .tga; the engine loads the .dds instead.
+    "models/mapobjects/item_highlight/item_highlight.dds": (
+        "models/item_highlight.png",
+        "256x256",
+    ),
 }
 
 DOIT_CONFIG = {"default_tasks": ["dist"]}
