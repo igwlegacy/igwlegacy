@@ -1,17 +1,17 @@
 ## Configuration
 
-Each functionality has a separate file in `patches/`:
+Each functionality has a separate file in `patches/` at the repository root:
 
 | File | Functionality |
 | --- | --- |
-| [run_pitch.c](../patches/run_pitch.c) | Pitch from forward and backward speed |
-| [run_roll.c](../patches/run_roll.c) | Roll from sideways speed |
-| [bob_pitch.c](../patches/bob_pitch.c) | Walking pitch bob |
-| [bob_roll.c](../patches/bob_roll.c) | Walking roll bob |
-| [bob_up.c](../patches/bob_up.c) | Walking eye-height bob |
-| [screen_shake.c](../patches/screen_shake.c) | Explosion and death shake |
-| [damage_kick.c](../patches/damage_kick.c) | Damage pitch and roll, including the return phase |
-| [landing_dip.c](../patches/landing_dip.c) | Eye-height dip on landing |
+| [run_pitch.c](../../patches/run_pitch.c) | Pitch from forward and backward speed |
+| [run_roll.c](../../patches/run_roll.c) | Roll from sideways speed |
+| [bob_pitch.c](../../patches/bob_pitch.c) | Walking pitch bob |
+| [bob_roll.c](../../patches/bob_roll.c) | Walking roll bob |
+| [bob_up.c](../../patches/bob_up.c) | Walking eye-height bob |
+| [screen_shake.c](../../patches/screen_shake.c) | Explosion and death shake |
+| [damage_kick.c](../../patches/damage_kick.c) | Damage pitch and roll, including the return phase |
+| [landing_dip.c](../../patches/landing_dip.c) | Eye-height dip on landing |
 
 Edit the rule definitions in the corresponding file and rebuild. `src/rules.c` registers the rules by reference and validates them. Comment out a registry reference to omit that rule. For a new functionality, add its `.c` file to `meson.build`, declare its rules in `patches/patches.h`, and reference them in `src/rules.c`. One functionality can supply several CVAR or instruction rules.
 
