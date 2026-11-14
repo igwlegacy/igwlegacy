@@ -1,20 +1,20 @@
-viewmodel 	"models/weapons/v_detonator.md3"
+viewmodel	"models/weapons/v_detonator.md3"
 worldmodel	"models/weapons/w_lpistol.md3"
 addonmodel	"models/weapons/w_shield.md3"
 bucket		4
 bucketpos	7
 weaponorder	22
-weight          2
+weight		2
 
 //============================
 //Test weapon animation Script
 //=============================
 //activity               first frame    numframes     loopingframes 		FPS
 //----------------------------------------------------------------------------------
-ACT_IDLE			0	20		19			10
-ACT_PRIMARYATTACK		20	10		0			25
-ACT_DRAW			35	10		0			25
-ACT_HOLSTER			30	5		0			25
+ACT_IDLE			0	20	19	10
+ACT_PRIMARYATTACK	20	10	0	25
+ACT_DRAW			35	10	0	25
+ACT_HOLSTER			30	5	0	25
 
 //events
 //-----------------------------------------------------------------------------------

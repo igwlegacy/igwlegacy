@@ -1,20 +1,20 @@
-viewmodel 	"models/weapons/v_medkit.md3"
+viewmodel	"models/weapons/v_medkit.md3"
 worldmodel	"models/weapons/w_medkit.md3"
 bucket		0
 bucketpos	3
 weaponorder	21
-weight          1
+weight		1
 
 //============================
 //Test weapon animation Script
 //=============================
 //activity               first frame    numframes     loopingframes 		FPS
 //----------------------------------------------------------------------------------
-ACT_IDLE			0		40		40			12
-ACT_PRIMARYATTACK		40		80		0			35
-ACT_PRIMARYATTACK_LOOP		120		10		10			8
-ACT_DRAW			160		10		0			25
-ACT_HOLSTER			170		10		0			-25
+ACT_IDLE				0	40	40	12
+ACT_PRIMARYATTACK		40	80	0	35
+ACT_PRIMARYATTACK_LOOP	120	10	10	8
+ACT_DRAW				160	10	0	25
+ACT_HOLSTER				170	10	0	-25
 
 //events
 //-----------------------------------------------------------------------------------

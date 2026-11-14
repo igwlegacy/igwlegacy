@@ -1,14 +1,14 @@
-viewmodel 	"models/weapons/v_minigun.md3"
-worldmodel	"models/weapons/w_minigun.md3"
-addonmodel	"models/weapons/w_minigunbarrel.md3"
-clipsize	250
+viewmodel		"models/weapons/v_minigun.md3"
+worldmodel		"models/weapons/w_minigun.md3"
+addonmodel		"models/weapons/w_minigunbarrel.md3"
+clipsize		250
 primary_ammo	AMMO_HEAVYMG
-bucket		3
-bucketpos	2
-weaponorder	20
-weight          6	
+bucket			3
+bucketpos		2
+weaponorder		20
+weight			6
 
-ACT_IDLE			0	10		9			8
-ACT_PRIMARYATTACK		20	10		10			25
-ACT_DRAW			15	5		0			25
-ACT_HOLSTER			10	5		0			25
+ACT_IDLE			0	10	9	8
+ACT_PRIMARYATTACK	20	10	10	25
+ACT_DRAW			15	5	0	25
+ACT_HOLSTER			10	5	0	25

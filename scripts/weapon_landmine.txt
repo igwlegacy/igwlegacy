@@ -1,27 +1,27 @@
-viewmodel 	"models/weapons/v_landmine.md3"
-worldmodel	"models/weapons/w_landmine.md3"
+viewmodel		"models/weapons/v_landmine.md3"
+worldmodel		"models/weapons/w_landmine.md3"
 primary_ammo	AMMO_LANDMINE
-bucket		4
-bucketpos	4
-weaponorder	18
-weight          4
-clipsize	0
+bucket			4
+bucketpos		4
+weaponorder		18
+weight			4
+clipsize		0
 
 //============================
 //Test weapon animation Script
 //=============================
 //activity               first frame    numframes     loopingframes 		FPS
 //----------------------------------------------------------------------------------
-ACT_IDLE			0	20		19			10
-ACT_PRIMARYATTACK		25	8		0			25
-ACT_DRAW			49	7		0			25
-ACT_HOLSTER			33	11		0			25
+ACT_IDLE			0	20	19	10
+ACT_PRIMARYATTACK	25	8	0	25
+ACT_DRAW			49	7	0	25
+ACT_HOLSTER			33	11	0	25
 //events
 //-----------------------------------------------------------------------------------
 
 event
 {
-	ID		EVENT_SWITCH
+	ID			EVENT_SWITCH
 	numFrames	1
 	frames		26
 	data		"0 1"
@@ -29,7 +29,7 @@ event
 
 event
 {
-	ID		EVENT_SWITCH
+	ID			EVENT_SWITCH
 	numFrames	1
 	frames		0
 	data		"1 1"
@@ -37,7 +37,7 @@ event
 
 event
 {
-	ID		EVENT_SWITCH
+	ID			EVENT_SWITCH
 	numFrames	1
 	frames		49
 	data		"1 1"
@@ -45,7 +45,7 @@ event
 
 event
 {
-	ID		EVENT_SWITCH
+	ID			EVENT_SWITCH
 	numFrames	1
 	frames		25
 	data		"1 1"

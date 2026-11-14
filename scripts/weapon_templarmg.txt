@@ -1,27 +1,27 @@
-viewmodel 	"models/weapons/v_mgun.md3"
-worldmodel	"models/weapons/w_templarmg.md3"
-clipsize	250
-clip2size	3
+viewmodel		"models/weapons/v_mgun.md3"
+worldmodel		"models/weapons/w_templarmg.md3"
+clipsize		250
+clip2size		3
 primary_ammo	AMMO_MACHINE_GUN
 secondary_ammo	AMMO_MGROCKET
-bucket		2
-bucketpos	4
-weaponorder	7
-weight          6
+bucket			2
+bucketpos		4
+weaponorder		7
+weight			6
 
 //============================
 //Test weapon animation Script
 //=============================
 //activity               first frame    numframes     loopingframes 		FPS
 //----------------------------------------------------------------------------------
-ACT_IDLE			18	20		19			10
-ACT_PRIMARYATTACK		0	3		3			25
+ACT_IDLE			18	20	19	10
+ACT_PRIMARYATTACK	0	3	3	25
 //ACT_PRIMARYATTACK2		3	10		0			25
-ACT_SECONDARYATTACK		140	57		0			25
-ACT_DRAW			205	9		0			25
-ACT_HOLSTER			211	10		0			25
-ACT_RELOAD			38	96		0			25
-ACT_PRIME			135	50		0			25
+ACT_SECONDARYATTACK	140	57	0	25
+ACT_DRAW			205	9	0	25
+ACT_HOLSTER			211	10	0	25
+ACT_RELOAD			38	96	0	25
+ACT_PRIME			135	50	0	25
 
 
 
@@ -30,7 +30,7 @@ ACT_PRIME			135	50		0			25
 
 event
 {
-	ID		EVENT_SWITCH
+	ID			EVENT_SWITCH
 	numFrames	1
 	frames		141
 	data		"0 0"
@@ -38,7 +38,7 @@ event
 
 event
 {
-	ID		EVENT_SWITCH
+	ID			EVENT_SWITCH
 	numFrames	1
 	frames		164
 	data		"1 0"

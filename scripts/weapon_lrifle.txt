@@ -1,33 +1,33 @@
-viewmodel 	"models/weapons/v_lrifle.md3"
+viewmodel	"models/weapons/v_lrifle.md3"
 worldmodel	"models/weapons/w_lrifle.md3"
 //addonmodel	"models/weapons/w_lrifle1.md3"
-clipsize	1
+clipsize		1
 primary_ammo	AMMO_LIGHTRIFLE
-bucket		2
-bucketpos	1
-weaponorder	5
-weight          3
+bucket			2
+bucketpos		1
+weaponorder		5
+weight			3
 
-ACT_IDLE			0	20		19			10
-ACT_PRIMARYATTACK		23	17		0			25
-ACT_DRAW			41	19		0			25
-ACT_RELOAD			60	75		0			25
-ACT_SECONDARYATTACK		145	5		0			25
-ACT_HOLSTER			155	5		0			25
-ACT_DEPLOY			135	5		0			25
-ACT_DEPLOYED			140	5		1			12
-ACT_UNDEPLOY			140	5		0			-25
+ACT_IDLE			0	20	19	10
+ACT_PRIMARYATTACK	23	17	0	25
+ACT_DRAW			41	19	0	25
+ACT_RELOAD			60	75	0	25
+ACT_SECONDARYATTACK	145	5	0	25
+ACT_HOLSTER			155	5	0	25
+ACT_DEPLOY			135	5	0	25
+ACT_DEPLOYED		140	5	1	12
+ACT_UNDEPLOY		140	5	0	-25
 
 event
 {
-	ID		EVENT_SWITCH
+	ID			EVENT_SWITCH
 	numFrames	1
 	frames		0
 	data		"1 2"
 }
 event
 {
-	ID		EVENT_SWITCH
+	ID			EVENT_SWITCH
 	numFrames	1
 	frames		41
 	data		"ifless $clip 1
@@ -38,7 +38,7 @@ event
 }
 event
 {
-	ID		EVENT_SWITCH
+	ID			EVENT_SWITCH
 	numFrames	1
 	frames		0
 	data		"ifless $clip 1
@@ -49,7 +49,7 @@ event
 }
 event
 {
-	ID		EVENT_SWITCH
+	ID			EVENT_SWITCH
 	numFrames	1
 	frames		25
 	data		"1 0"
@@ -63,56 +63,56 @@ event
 //}
 event
 {
-	ID		EVENT_SWITCH
+	ID			EVENT_SWITCH
 	numFrames	1
 	frames		62
 	data		"1 2"
 }
 event
 {
-	ID		EVENT_SWITCH
+	ID			EVENT_SWITCH
 	numFrames	1
 	frames		62
 	data		"0 1"
 }
 event
 {
-	ID		EVENT_SOUND
+	ID			EVENT_SOUND
 	numFrames	1
 	frames		66
 	data		"sound\weapons\lightrifle\lrifle_barrelup.wav"
 }
 event
 {
-	ID		EVENT_SOUND
+	ID			EVENT_SOUND
 	numFrames	1
 	frames		83
 	data		"sound\weapons\lightrifle\lrifle_shellin.wav"
 }
 event
 {
-	ID		EVENT_SOUND
+	ID			EVENT_SOUND
 	numFrames	1
 	frames		98
 	data		"sound\weapons\lightrifle\lrifle_barreldn.wav"
 }
 event
 {
-	ID		EVENT_SOUND
+	ID			EVENT_SOUND
 	numFrames	1
 	frames		111
 	data		"sound\weapons\lightrifle\lrifle_cock.wav"
 }
 event
 {
-	ID		EVENT_SWITCH
+	ID			EVENT_SWITCH
 	numFrames	1
 	frames		157
 	data		"0 2"
 }
 event
 {
-	ID		EVENT_SWITCH
+	ID			EVENT_SWITCH
 	numFrames	1
 	frames		157
 	data		"1 1"

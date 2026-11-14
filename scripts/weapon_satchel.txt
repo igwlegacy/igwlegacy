@@ -1,53 +1,53 @@
-viewmodel 	"models/weapons/v_satchel.md3"
-worldmodel	"models/weapons/w_satchel.md3"
-bucket		4
-bucketpos	1
-weaponorder	15
-weight          3
+viewmodel		"models/weapons/v_satchel.md3"
+worldmodel		"models/weapons/w_satchel.md3"
+bucket			4
+bucketpos		1
+weaponorder		15
+weight			3
 primary_ammo	AMMO_SATCHEL
-clipsize 0
+clipsize		0
 
 //============================
 //Test weapon animation Script
 //=============================
 //activity               first frame    numframes     loopingframes 		FPS
 //----------------------------------------------------------------------------------
-ACT_IDLE			0	20		19			10
-ACT_PRIMARYATTACK		20	12		0			25
-ACT_DRAW			43	16		0			25
-ACT_HOLSTER			33	10		0			25
+ACT_IDLE			0	20	19	10
+ACT_PRIMARYATTACK	20	12	0	25
+ACT_DRAW			43	16	0	25
+ACT_HOLSTER			33	10	0	25
 
 //events
 //-----------------------------------------------------------------------------------
 
 event
 {
-   ID 			EVENT_SWITCH
-   numFrames 		1
-   frames		25
-   data			"0 1"	 	  	 
+	ID			EVENT_SWITCH
+	numFrames	1
+	frames		25
+	data		"0 1"
 }
 
 event
 {
-   ID 			EVENT_SWITCH
-   numFrames 		1
-   frames		33
-   data			"1 1"	 	  	 
+	ID			EVENT_SWITCH
+	numFrames	1
+	frames		33
+	data		"1 1"
 }
 
 event
 {
-   ID 			EVENT_SWITCH
-   numFrames 		1
-   frames		0
-   data			"1 1"	 	  	 
+	ID			EVENT_SWITCH
+	numFrames	1
+	frames		0
+	data		"1 1"
 }
 
 event
 {
-   ID 			EVENT_SWITCH
-   numFrames 		1
-   frames		43
-   data			"1 1"	 	  	 
+	ID			EVENT_SWITCH
+	numFrames	1
+	frames		43
+	data		"1 1"
 }

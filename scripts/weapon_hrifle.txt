@@ -1,32 +1,32 @@
-viewmodel 	"models/weapons/v_hrifle.md3"
-worldmodel	"models/weapons/w_hrifle.md3"
-clipsize	8
-clip2size	5
+viewmodel		"models/weapons/v_hrifle.md3"
+worldmodel		"models/weapons/w_hrifle.md3"
+clipsize		8
+clip2size		5
 primary_ammo	AMMO_HEAVYRIFLE
-secondary_ammo 	AMMO_HEAVYRIFLEBLAST
-bucket		2
-bucketpos	3
-weaponorder	8
-weight          5
+secondary_ammo	AMMO_HEAVYRIFLEBLAST
+bucket			2
+bucketpos		3
+weaponorder		8
+weight			5
 
 //============================
 //Test weapon animation Script
 //=============================
 //activity               first frame    numframes     loopingframes 		FPS
 //----------------------------------------------------------------------------------
-ACT_IDLE			0	20		19			10
-ACT_PRIMARYATTACK		20	30		0			25
-ACT_DRAW			160	10		0			25
-ACT_RELOAD			60	20		0			25
-ACT_RELOAD2			60	50		0			25
-ACT_SECONDARYATTACK             171     29              0			25
+ACT_IDLE			0	20	19	10
+ACT_PRIMARYATTACK	20	30	0	25
+ACT_DRAW			160	10	0	25
+ACT_RELOAD			60	20	0	25
+ACT_RELOAD2			60	50	0	25
+ACT_SECONDARYATTACK	171	29	0	25
 //ACT_SECONDARYRELOAD		116	20		0			25
-ACT_HOLSTER			150	10		0			25
+ACT_HOLSTER	150	10	0	25
 //events
 //-----------------------------------------------------------------------------------
 event
 {
-	ID		EVENT_SOUND
+	ID			EVENT_SOUND
 	numFrames	1
 	frames		32
 	data		"sound\weapons\heavyrifle\pump.wav"
@@ -35,7 +35,7 @@ event
 
 event
 {
-	ID		EVENT_SWITCH
+	ID			EVENT_SWITCH
 	numFrames	1
 	frames		0
 	data		"0 2"
@@ -43,7 +43,7 @@ event
 
 event
 {
-	ID		EVENT_SOUND
+	ID			EVENT_SOUND
 	numFrames	1
 	frames		90
 	data		"sound\weapons\heavyrifle\pump.wav"
@@ -51,7 +51,7 @@ event
 
 event
 {
-	ID		EVENT_SWITCH
+	ID			EVENT_SWITCH
 	numFrames	1
 	frames		60
 	data		"1 2"
@@ -59,7 +59,7 @@ event
 
 event
 {
-	ID		EVENT_SWITCH
+	ID			EVENT_SWITCH
 	numFrames	1
 	frames		161
 	data		"0 2"
@@ -67,7 +67,7 @@ event
 
 event
 {
-	ID		EVENT_SWITCH
+	ID			EVENT_SWITCH
 	numFrames	1
 	frames		73
 	data		"0 2"

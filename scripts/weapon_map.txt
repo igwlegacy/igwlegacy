@@ -1,26 +1,26 @@
-viewmodel 	"models/weapons/v_map.md3"
+viewmodel	"models/weapons/v_map.md3"
 worldmodel	"models/weapons/w_map.md3"
 bucket		0
 bucketpos	0
 
 weaponorder	0
-weight          1
+weight		1
 
 //============================
 //Test weapon animation Script
 //=============================
 //activity               first frame    numframes     loopingframes 		FPS
 //----------------------------------------------------------------------------------
-ACT_IDLE			0	20		19			8
-ACT_DRAW			30	10		0			-25
-ACT_HOLSTER			20	9		0			25
+ACT_IDLE	0	20	19	8
+ACT_DRAW	30	10	0	-25
+ACT_HOLSTER	20	9	0	25
 
 //events
 //-----------------------------------------------------------------------------------
 
 event
 {
-	ID		EVENT_SOUND
+	ID			EVENT_SOUND
 	numFrames	1
 	frames		10
 	data		"sound/weapons/map/map_draw.wav"
@@ -28,7 +28,7 @@ event
 
 event
 {
-	ID		EVENT_SOUND
+	ID			EVENT_SOUND
 	numFrames	1
 	frames		20
 	data		"sound/weapons/map/map_holster.wav"

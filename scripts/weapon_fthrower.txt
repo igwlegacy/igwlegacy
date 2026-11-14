@@ -1,26 +1,26 @@
-viewmodel 	"models/weapons/v_flamethr.md3"
+viewmodel	"models/weapons/v_flamethr.md3"
 worldmodel	"models/weapons/w_flamethr.md3"
 addonmodel	"models/weapons/w_flamepack.md3"
 
-primary_ammo AMMO_FLAMETHROWER
-secondary_ammo AMMO_FLAMETHROWER
-bucket 3
-bucketpos 3
-weight          6
-weaponorder	10
-clipsize 0
+primary_ammo	AMMO_FLAMETHROWER
+secondary_ammo	AMMO_FLAMETHROWER
+bucket			3
+bucketpos		3
+weight			6
+weaponorder		10
+clipsize		0
 
 //============================
 //Test weapon animation Script
 //=============================
 //activity               first frame    numframes     loopingframes 		FPS
 //----------------------------------------------------------------------------------
-ACT_IDLE			10	20		19			10
-ACT_PRIMARYATTACK		30	5		0			25
-ACT_PRIMARYATTACK_LOOP		35	4		4			8
-ACT_DRAW			0	10		0			25
-ACT_HOLSTER			40	5		0			25
-ACT_SECONDARYATTACK		35	4		4			8
+ACT_IDLE				10	20	19	10
+ACT_PRIMARYATTACK		30	5	0	25
+ACT_PRIMARYATTACK_LOOP	35	4	4	8
+ACT_DRAW				0	10	0	25
+ACT_HOLSTER				40	5	0	25
+ACT_SECONDARYATTACK		35	4	4	8
 
 
 //events
@@ -28,7 +28,7 @@ ACT_SECONDARYATTACK		35	4		4			8
 
 event
 {
-	ID		EVENT_SWITCH
+	ID			EVENT_SWITCH
 	numFrames	1
 	frames		0
 	data		"1 flame"
@@ -36,7 +36,7 @@ event
 
 event
 {
-	ID		EVENT_SWITCH
+	ID			EVENT_SWITCH
 	numFrames	1
 	frames		10
 	data		"1 flame"
@@ -44,7 +44,7 @@ event
 
 event
 {
-	ID		EVENT_SWITCH
+	ID			EVENT_SWITCH
 	numFrames	1
 	frames		30
 	data		"0 flame"
@@ -52,7 +52,7 @@ event
 
 event
 {
-	ID		EVENT_SWITCH
+	ID			EVENT_SWITCH
 	numFrames	1
 	frames		35
 	data		"0 flame"

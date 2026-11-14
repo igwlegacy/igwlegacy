@@ -1,60 +1,60 @@
-viewmodel 	"models/weapons/v_hmg.md3"
-worldmodel	"models/weapons/w_hmg.md3"
-clipsize	250
+viewmodel		"models/weapons/v_hmg.md3"
+worldmodel		"models/weapons/w_hmg.md3"
+clipsize		250
 primary_ammo	AMMO_HEAVYMG
-bucket		3
-bucketpos	1
-weaponorder	12
-weight          6
+bucket			3
+bucketpos		1
+weaponorder		12
+weight			6
 
-ACT_IDLE			0	20		19			10
-ACT_PRIMARYATTACK		60	8		8			100
-ACT_DRAW			280	10		0			25
-ACT_RELOAD			70	180		0			25
-ACT_DEPLOY			20	20		0			25
-ACT_DEPLOYED			40	20		19			10
-ACT_UNDEPLOY			250	10		0			25
-ACT_HOLSTER			270	10		0			25
+ACT_IDLE			0	20	19	10
+ACT_PRIMARYATTACK	60	8	8	100
+ACT_DRAW			280	10	0	25
+ACT_RELOAD			70	180	0	25
+ACT_DEPLOY			20	20	0	25
+ACT_DEPLOYED		40	20	19	10
+ACT_UNDEPLOY		250	10	0	25
+ACT_HOLSTER			270	10	0	25
 
 
 event
 {
-	ID		EVENT_SOUND
+	ID			EVENT_SOUND
 	numFrames	1
 	frames		82
 	data		"sound\weapons\heavymachgun\hmg_clipin.wav"
 }
 event
 {
-	ID		EVENT_SOUND
+	ID			EVENT_SOUND
 	numFrames	1
 	frames		109
 	data		"sound\weapons\heavymachgun\hmg_clipout.wav"
 }
 event
 {
-	ID		EVENT_SOUND
+	ID			EVENT_SOUND
 	numFrames	1
 	frames		153
 	data		"sound\weapons\heavymachgun\hmg_clipout.wav"
 }
 event
 {
-	ID		EVENT_SOUND
+	ID			EVENT_SOUND
 	numFrames	1
 	frames		160
 	data		"sound\weapons\heavymachgun\hmg_belt.wav"
 }
 event
 {
-	ID		EVENT_SOUND
+	ID			EVENT_SOUND
 	numFrames	1
 	frames		182
 	data		"sound\weapons\heavymachgun\hmg_clipin.wav"
 }
 event
 {
-	ID		EVENT_SOUND
+	ID			EVENT_SOUND
 	numFrames	1
 	frames		206
 	data		"sound\weapons\heavymachgun\hmg_cock.wav"
@@ -62,7 +62,7 @@ event
 
 event
 {
-	ID		EVENT_SWITCH
+	ID			EVENT_SWITCH
 	numFrames	1
 	frames		140
 	data		"1 ALL"

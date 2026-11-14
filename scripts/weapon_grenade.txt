@@ -1,25 +1,25 @@
-viewmodel 	"models/weapons/v_molotov.md3"
+viewmodel	"models/weapons/v_molotov.md3"
 worldmodel	"models/weapons/w_hgrenade.md3"
 bucket		4
-bucketpos  3
+bucketpos	3
 weaponorder	17
-weight          2
-clipsize 0
+weight		2
+clipsize	0
 
 //activity               first frame    numframes     loopingframes 		FPS
 //----------------------------------------------------------------------------------
-ACT_IDLE			10	20		19			10
-ACT_PRIME			50	27		0			25
-ACT_PRIMARYATTACK		78	10		0			25
-ACT_DRAW			31	19		0			25
-ACT_HOLSTER			0	10		0			25
+ACT_IDLE			10	20	19	10
+ACT_PRIME			50	27	0	25
+ACT_PRIMARYATTACK	78	10	0	25
+ACT_DRAW			31	19	0	25
+ACT_HOLSTER			0	10	0	25
 //events
 //-----------------------------------------------------------------------------------
 
 
 event
 {
-	ID		EVENT_SWITCH
+	ID			EVENT_SWITCH
 	numFrames	1
 	frames		78
 	data		"0 Grenade"
@@ -27,14 +27,14 @@ event
 
 event
 {
-	ID		EVENT_SWITCH
+	ID			EVENT_SWITCH
 	numFrames	1
 	frames		31
 	data		"1 Grenade"
 }
 event
 {
-	ID		EVENT_SWITCH
+	ID			EVENT_SWITCH
 	numFrames	1
 	frames		10
 	data		"1 Grenade"
