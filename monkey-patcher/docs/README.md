@@ -13,6 +13,7 @@ Each functionality has a separate file in `patches/` at the repository root:
 | [damage_kick.c](../../patches/damage_kick.c) | Damage pitch and roll, including the return phase |
 | [landing_dip.c](../../patches/landing_dip.c) | Eye-height dip on landing |
 | [death_camera.c](../../patches/death_camera.c) | Immediate spectator movement after death, without automatic camera rise |
+| [respawn_countdown.c](../../patches/respawn_countdown.c) | Respawn countdown rounded up to seconds, with text expiring at the respawn deadline |
 | [main_menu_ad.c](../../patches/main_menu_ad.c) | Main-menu promotional panel, ticker, and update request |
 
 Edit the rule definitions in the corresponding file and rebuild. `src/rules.c` registers the rules by reference and validates them. Comment out a registry reference to omit that rule. For a new functionality, add its `.c` file to `patches/meson.build`, declare its rules in `patches/patches.h`, and reference them in `src/rules.c`. One functionality can supply several CVAR or instruction rules.
@@ -25,11 +26,14 @@ Edit the rule definitions in the corresponding file and rebuild. `src/rules.c` r
 | Damage pitch and roll                   | Read an existing zero constant; HUD damage indicators retain their values |
 | Landing dip                             | Read the zero constant                                                    |
 | Death camera                            | Enter spectator movement immediately; omit the slow rise and spectator lift |
+| Respawn countdown                       | Round remaining seconds up and expire the final message at the respawn deadline |
 | Main-menu promotion                     | Omit the panel's menu items, ticker, and update request                    |
 
 Weapon recoil and weapon model sway retain their original behavior. Recoil changes the actual aim in shared player movement code and would require corresponding server and client patches.
 
 Immediate death spectating requires the patched `gamex86.dll` on the server and `cgamex86.dll` on the client. The server creates the corpse and enables spectator movement on the first client update after death, without the 3000 ms delay or the upward relocation of up to 256 units. The client omits the 15-unit-per-second rise while awaiting the spectator state. The respawn timer remains unchanged.
+
+The respawn countdown fix requires only the patched `cgamex86.dll` on the client. `CG_DrawDeathScreen` rounds the remaining milliseconds up to seconds and gives its centerprint the remaining time as its lifetime. The final `SPAWNING IN: 1` therefore covers the last second and expires at the server's advertised respawn deadline. Other centerprints keep their usual lifetime, and the server's respawn timing is unchanged. The two helpers occupy guarded function-alignment padding and use relative calls and jumps, so no new PE relocations are needed.
 
 ### CVAR mapping
 

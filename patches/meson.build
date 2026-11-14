@@ -8,6 +8,7 @@ patch_sources = files(
 	'damage_kick.c',
 	'landing_dip.c',
 	'death_camera.c',
+	'respawn_countdown.c',
 	'main_menu_ad.c',
 )
 

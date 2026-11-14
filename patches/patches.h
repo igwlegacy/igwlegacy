@@ -15,6 +15,7 @@ extern const code_rule_t patch_screen_shake;
 extern const code_rule_t patch_damage_kick[3];
 extern const code_rule_t patch_landing_dip;
 extern const code_rule_t patch_death_camera[3];
+extern const code_rule_t patch_respawn_countdown[6];
 extern const code_rule_t patch_main_menu_ad[11];
 extern const code_rule_t patch_main_menu_github[9];
 
