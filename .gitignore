@@ -4,6 +4,8 @@ config.cfg
 
 input-dlls/
 dist/
+.doit.db*
+__pycache__/
 
 # pixi environments
 .pixi/*
