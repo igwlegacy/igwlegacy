@@ -15,6 +15,7 @@ Each functionality has a separate file in `patches/` at the repository root:
 | [death_camera.c](../../patches/death_camera.c) | Immediate spectator movement after death, without automatic camera rise |
 | [respawn_countdown.c](../../patches/respawn_countdown.c) | Respawn countdown rounded up to seconds, with text expiring at the respawn deadline |
 | [shotgun.c](../../patches/shotgun.c) | Editable hardcoded shotgun stats and pellet damage falloff |
+| [hmg_reload.c](../../patches/hmg_reload.c) | HMG reloading while undeployed, preserving deployment state |
 | [main_menu_ad.c](../../patches/main_menu_ad.c) | Main-menu promotional panel, ticker, and update request |
 | [valuable_markers.c](../../patches/valuable_markers.c) | Persistent models at every valuable spawn position |
 
@@ -66,6 +67,12 @@ Primary pellet damage stays at 100% through the falloff start, decreases linearl
 Install the resulting `gamex86.dll` on the server and `cgamex86.dll` on clients together. Both modules need the same pellet pattern and movement timings. The patch uses private floating-point constants in verified function-alignment padding, preserving the original relocation slots of their readers so other weapons keep their own spread and recoil.
 
 The values were traced in the `reigw` source: `src/code/game/g_weapon.c` (`ShotgunPellet`, `ShotgunPattern`), `src/code/cgame/cg_weapons.c` (`CG_ShotgunPattern`), and `src/code/game/bg_pmove.c` (`PM_HeavyRifleWeapon`, `PM_LoadShell`, `PM_BeginShellReload`, `PM_FinishShell`). The corresponding retail addresses and guarded instructions are recorded in the patch.
+
+### HMG reloading
+
+The HMG (`WP_HEAVYMG`) can reload while undeployed, either automatically with an empty clip or manually with a partially filled clip and reserve ammo. It stays undeployed afterward; a reload started while deployed still finishes deployed. Reload duration, Firepower Upgrade scaling and ammunition transfer keep their original behavior.
+
+Install the patched `gamex86.dll` on the server and `cgamex86.dll` on clients together. [hmg_reload.c](../../patches/hmg_reload.c) selects the existing undeployed reload state for an undeployed HMG, allowing the original reload completion code to restore its ready state. Comment out `REGISTER_CODE_RULES(patch_hmg_reload)` and rebuild to omit this feature.
 
 ### Valuable spawn models
 
