@@ -5,6 +5,7 @@ patch_sources = files(
 	'landing_dip.c',
 	'death_camera.c',
 	'respawn_countdown.c',
+	'shotgun.c',
 	'main_menu_ad.c',
 	'main_menu_github.c',
 )

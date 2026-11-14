@@ -14,6 +14,7 @@ Each functionality has a separate file in `patches/` at the repository root:
 | [landing_dip.c](../../patches/landing_dip.c) | Eye-height dip on landing |
 | [death_camera.c](../../patches/death_camera.c) | Immediate spectator movement after death, without automatic camera rise |
 | [respawn_countdown.c](../../patches/respawn_countdown.c) | Respawn countdown rounded up to seconds, with text expiring at the respawn deadline |
+| [shotgun.c](../../patches/shotgun.c) | Editable hardcoded shotgun stats and pellet damage falloff |
 | [main_menu_ad.c](../../patches/main_menu_ad.c) | Main-menu promotional panel, ticker, and update request |
 
 Edit the rule definitions in the corresponding file and rebuild. Each file registers its own rules with `REGISTER_CVAR_RULE`, `REGISTER_CODE_RULE`, or their plural forms for arrays. Comment out a registration to omit those rules. For a new functionality, add its `.c` file to `patches/meson.build` and register its rules in that file; no declarations or patch lists need updating in shared C files. `src/rules.c` collects and validates the registered rules, sorting by registration name for a deterministic payload layout while preserving the order within each array. One functionality can supply several CVAR or instruction rules.
@@ -29,11 +30,41 @@ Edit the rule definitions in the corresponding file and rebuild. Each file regis
 | Respawn countdown                       | Round remaining seconds up and expire the final message at the respawn deadline |
 | Main-menu promotion                     | Omit the panel's menu items, ticker, and update request                    |
 
-Weapon recoil and weapon model sway retain their original behavior. Recoil changes the actual aim in shared player movement code and would require corresponding server and client patches.
+Weapon model sway retains its original behavior. The shotgun patch provides matching server and client recoil settings, initially set to their stock values.
 
 Immediate death spectating requires the patched `gamex86.dll` on the server and `cgamex86.dll` on the client. The server creates the corpse and enables spectator movement on the first client update after death, without the 3000 ms delay or the upward relocation of up to 256 units. The client omits the 15-unit-per-second rise while awaiting the spectator state. The respawn timer remains unchanged.
 
 The respawn countdown fix requires only the patched `cgamex86.dll` on the client. `CG_DrawDeathScreen` rounds the remaining milliseconds up to seconds and gives its centerprint the remaining time as its lifetime. The final `SPAWNING IN: 1` therefore covers the last second and expires at the server's advertised respawn deadline. Other centerprints keep their usual lifetime, and the server's respawn timing is unchanged. The two helpers occupy guarded function-alignment padding and use relative calls and jumps, so no new PE relocations are needed.
+
+### Hardcoded shotgun stats
+
+The shotgun is `weapon_hrifle` / `WP_HEAVYRIFLE`. Edit the settings at the top of [shotgun.c](../../patches/shotgun.c) and rebuild the patcher. The table lists retail reference values for existing settings and the default curve for the added damage falloff:
+
+| Setting | Reference value |
+| --- | --- |
+| Pellets per primary shot | 11 |
+| Spread, applied horizontally and vertically | 700 |
+| Primary firing interval (`SHOTGUN_PRIMARY_FIRE_INTERVAL_MS`) | 1200 ms |
+| Secondary firing interval (`SHOTGUN_SECONDARY_FIRE_INTERVAL_MS`) | 1200 ms |
+| Shells loaded per reload animation | 1 |
+| Reload time per animation | 820 ms |
+| Reload time for the final batch, or the last reserve ammo | 2020 ms |
+| Delay after filling the clip | 50 ms |
+| Recoil duration | 40 ms |
+| Recoil pitch / yaw | 0.1 / 0.05 |
+| Full pellet damage through (`SHOTGUN_FALLOFF_START_UNITS`) | 512 game units |
+| Minimum pellet damage reached at (`SHOTGUN_FALLOFF_END_UNITS`) | 2048 game units |
+| Minimum damage multiplier (`SHOTGUN_FALLOFF_MIN_PERCENT`) | 25% |
+
+Pellet count and `SHOTGUN_SHELLS_PER_RELOAD` support 1 through 127. Set `SHOTGUN_SHELLS_PER_RELOAD` to `2`, for example, to load up to two shells per animation. Each transfer is limited by free clip space and remaining reserve ammo. The final reload animation plays when that batch fills the clip or consumes the last reserve ammo. Firepower upgrades continue to scale the shell reload times. Difficulty configs and weapon scripts are not patched; damage, clip sizes, reserve ammunition and prices continue to come from those files.
+
+The primary and secondary firing intervals are independent positive millisecond values. Each attack sets the delay before either attack can fire again; switching fire modes does not bypass that delay. These settings do not change animation playback speed. The cooldown helpers occupy guarded padding after `PM_FillClip` and use relative calls, so no new PE relocations are needed. Keep each helper and its call enabled together.
+
+Primary pellet damage stays at 100% through the falloff start, decreases linearly to the minimum percentage at the falloff end, then stays at that minimum. Distance is measured from the muzzle to each pellet's actual hit point. Start must be nonnegative, end must exceed start, and the minimum percentage supports 1 through 100; set it to 100 to disable attenuation. The server multiplies the existing player or NPC base damage and truncates to an integer before the game's normal upgrade, armor and minimum-damage handling. Difficulty configs and weapon scripts still provide base damage. The incendiary secondary attack is unaffected, and the client needs no additional falloff patch because damage is calculated on the server. Keep the falloff helper fragments, private constants and damage hook enabled together.
+
+Install the resulting `gamex86.dll` on the server and `cgamex86.dll` on clients together. Both modules need the same pellet pattern and movement timings. The patch uses private floating-point constants in verified function-alignment padding, preserving the original relocation slots of their readers so other weapons keep their own spread and recoil.
+
+The values were traced in the `reigw` source: `src/code/game/g_weapon.c` (`ShotgunPellet`, `ShotgunPattern`), `src/code/cgame/cg_weapons.c` (`CG_ShotgunPattern`), and `src/code/game/bg_pmove.c` (`PM_HeavyRifleWeapon`, `PM_LoadShell`, `PM_BeginShellReload`, `PM_FinishShell`). The corresponding retail addresses and guarded instructions are recorded in the patch.
 
 ### CVAR mapping
 
