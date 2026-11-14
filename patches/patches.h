@@ -16,7 +16,7 @@ extern const code_rule_t patch_damage_kick[3];
 extern const code_rule_t patch_landing_dip;
 extern const code_rule_t patch_death_camera[3];
 extern const code_rule_t patch_main_menu_ad[11];
-extern const code_rule_t patch_main_menu_github[5];
+extern const code_rule_t patch_main_menu_github[9];
 
 #define B4(a) (a) & 255, ((a) >> 8) & 255, ((a) >> 16) & 255, ((a) >> 24) & 255
 

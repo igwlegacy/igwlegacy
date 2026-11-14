@@ -41,6 +41,10 @@ const code_rule_t *const code_rules[] = {
     &patch_main_menu_github[2],
     &patch_main_menu_github[3],
     &patch_main_menu_github[4],
+    &patch_main_menu_github[5],
+    &patch_main_menu_github[6],
+    &patch_main_menu_github[7],
+    &patch_main_menu_github[8],
     NULL,
 };
 const size_t code_rule_count = ARRAY_SIZE(code_rules) - 1;
