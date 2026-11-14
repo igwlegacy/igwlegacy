@@ -9,6 +9,7 @@ Each functionality has a separate file in `patches/` at the repository root:
 | [bob_pitch.c](../../patches/bob_pitch.c) | Walking pitch bob |
 | [bob_roll.c](../../patches/bob_roll.c) | Walking roll bob |
 | [bob_up.c](../../patches/bob_up.c) | Walking eye-height bob |
+| [fog.c](../../patches/fog.c) | Engine fog defaults: `r_forceFog 1`, `r_forceFogDensity 0` |
 | [screen_shake.c](../../patches/screen_shake.c) | Explosion and death shake |
 | [damage_kick.c](../../patches/damage_kick.c) | Damage pitch and roll, including the return phase |
 | [landing_dip.c](../../patches/landing_dip.c) | Eye-height dip on landing |
@@ -115,15 +116,18 @@ In the retail UI DLL, the menu initializer at RVA `0x1e390` assigns `textures/ui
 
 The patch omits the nine promotional menu-item registration calls while retaining their argument pushes and stack cleanup. It returns from the menu draw callback at RVA `0x1e1fc` after the normal menu/error draw, releasing its reserved stack word before returning, to skip response handling and the separately rendered ticker. The request starter at RVA `0x1dde0` returns before calling engine syscall 121 with request type 5. Original absolute operands and their relocation slots remain intact.
 
-## DLL support and implementation
+## Binary support and implementation
 
 Only the retail files are accepted:
 
-| DLL            | Bytes  | PE timestamp | SHA-256                                                            |
+| Binary         | Bytes  | PE timestamp | SHA-256                                                            |
 | ---            | ---    | ---          | ---                                                                |
 | `gamex86.dll`  | 930304 | `0x4fbdcafd` | `61db8f1ca15bd6a8cf68ee98ce4af4420c7347fecdc327b2e557d7502c0931fe` |
 | `cgamex86.dll` | 911360 | `0x4fbdcb0d` | `d095cc681067f88827e7229953bcc9d8f66129d3fd680a034bb4266382f60985` |
 | `uix86.dll`    | 499712 | `0x4fbdcaee` | `90ab043eb8299c5852594a92bc5e6f958b97f6af55d9d0bcbbe8b81584f43dae` |
+| `igwarlord.exe` | 2414080 | `0x4fbeadb4` | `15dd413911fdfb26ccc9c0ec5cd2704e78cbb6a8622de7fe18eda398c16c55b7` |
+
+The executable uses instruction patches in [fog.c](../../patches/fog.c) to replace only the default-string pointers passed during renderer CVAR registration. `r_forcefog` (CVAR names are case insensitive) defaults to `1`, and `r_forceFogDensity` defaults to `0` instead of `0.0003`. The original flags, shared string literals, and relocation slots are preserved. Existing settings and subsequent CVAR changes retain the engine's normal behavior. No syscall payload is added to the executable.
 
 The program checks file size and a whole-file FNV-1a 64-bit fingerprint, then verifies PE32/i386 headers and instruction guards. The SHA-256 values above are provided for independent identification. The fingerprint guards against accidental version differences, not malicious collisions. Supporting another release requires verifying its layout and patch sites and adding a profile in `src/pe.c`.
 

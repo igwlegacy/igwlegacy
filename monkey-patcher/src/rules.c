@@ -132,7 +132,8 @@ bool rules_validate(void)
     }
     for (size_t i = 0; i < code_rule_count; ++i) {
         const code_rule_t *rule = code_rules[i];
-        if ((rule->module != GAME && rule->module != CGAME && rule->module != UI) ||
+        if ((rule->module != GAME && rule->module != CGAME && rule->module != UI &&
+             rule->module != ENGINE) ||
             !rule->size || rule->size > PATCH_MAX) {
             fprintf(stderr, "Invalid code rule %zu\n", i);
             return false;

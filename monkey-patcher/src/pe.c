@@ -19,6 +19,10 @@ static const profile_t profiles[] = {
     { .module = UI, .name = "uix86.dll", .size = 499712,
       .fingerprint = UINT64_C(0x921187794457deb6),
       .timestamp = 0x4fbdcaee, .image_base = 0x10000000 },
+    /* Engine defaults are instruction patches without a DLL syscall payload. */
+    { .module = ENGINE, .name = "igwarlord.exe", .size = 2414080,
+      .fingerprint = UINT64_C(0x9637644919c69121),
+      .timestamp = 0x4fbeadb4, .image_base = 0x00400000 },
 };
 
 uint16_t get16(const unsigned char *p)
@@ -80,8 +84,8 @@ bool image_open(image_t *image, const char *path)
     bool ok = false;
     if (fseek(file, 0, SEEK_END) == 0)
         length = ftell(file);
-    /* Supported inputs are below 1 MiB. Bound allocation before parsing. */
-    if (length < 0 || length > 2 * 1024 * 1024 || fseek(file, 0, SEEK_SET) != 0) {
+    /* Supported inputs are below 4 MiB. Bound allocation before parsing. */
+    if (length < 0 || length > 4 * 1024 * 1024 || fseek(file, 0, SEEK_SET) != 0) {
         fprintf(stderr, "%s: unreadable or unsupported file size\n", path);
         goto done;
     }
@@ -99,7 +103,7 @@ bool image_open(image_t *image, const char *path)
             image->profile = &profiles[i];
     }
     if (!image->profile) {
-        fprintf(stderr, "%s: unsupported or modified DLL (%zu bytes, FNV-1a %016" PRIx64 ")\n",
+        fprintf(stderr, "%s: unsupported or modified binary (%zu bytes, FNV-1a %016" PRIx64 ")\n",
                 path, image->size, hash);
         goto done;
     }
@@ -268,7 +272,7 @@ bool image_patch(image_t *image)
 {
     const profile_t *p = image->profile;
     size_t changes = 0;
-    printf("%s: known retail DLL\n", p->name);
+    printf("%s: known retail binary\n", p->name);
     bool has_payload = false;
     for (size_t i = 0; i < payload_feature_count; ++i) {
         const payload_feature_t *feature = payload_features[i];

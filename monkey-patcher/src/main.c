@@ -1,5 +1,6 @@
 #include "patcher.h"
 
+#include <ctype.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,10 +15,10 @@ typedef struct {
 
 static void usage(FILE *out)
 {
-    fputs("Usage: igw-monkey-patcher [--dry-run] [--output-dir DIR] DLL...\n"
+    fputs("Usage: igw-monkey-patcher [--dry-run] [--output-dir DIR] BINARY...\n"
           "       igw-monkey-patcher --list\n"
           "\n"
-          "Writes NAME.patched.dll beside each input, or its original basename\n"
+          "Writes NAME.patched.dll/.exe beside each input, or its original basename\n"
           "inside an existing output directory. Never overwrites a file.\n"
           "Edit the feature files in patches/ and rebuild to change patches.\n", out);
 }
@@ -32,7 +33,7 @@ static const char *basename_of(const char *path)
     return name;
 }
 
-static char *output_path(const char *input, const char *directory)
+static char *output_path(const char *input, const char *directory, module_t module)
 {
     size_t length = strlen(input);
     if (directory) {
@@ -43,17 +44,18 @@ static char *output_path(const char *input, const char *directory)
             snprintf(result, size, "%s/%s", directory, name);
         return result;
     }
-    /* Keep arbitrary filenames usable; only strip a .dll suffix. */
+    /* Contents select the output type even when an input has been renamed. */
+    const char *extension = module == ENGINE ? ".exe" : ".dll";
     if (length >= 4 && input[length - 4] == '.' &&
-        (input[length - 3] == 'd' || input[length - 3] == 'D') &&
-        (input[length - 2] == 'l' || input[length - 2] == 'L') &&
-        (input[length - 1] == 'l' || input[length - 1] == 'L'))
+        tolower((unsigned char)input[length - 3]) == extension[1] &&
+        tolower((unsigned char)input[length - 2]) == extension[2] &&
+        tolower((unsigned char)input[length - 1]) == extension[3])
         length -= 4;
-    const char suffix[] = ".patched.dll";
-    char *result = malloc(length + sizeof(suffix));
+    const char *suffix = module == ENGINE ? ".patched.exe" : ".patched.dll";
+    char *result = malloc(length + strlen(suffix) + 1);
     if (result) {
         memcpy(result, input, length);
-        memcpy(result + length, suffix, sizeof(suffix));
+        strcpy(result + length, suffix);
     }
     return result;
 }
@@ -64,6 +66,7 @@ static const char *module_name(module_t module)
     case GAME: return "gamex86";
     case CGAME: return "cgamex86";
     case UI: return "uix86";
+    case ENGINE: return "igwarlord";
     }
     return "unknown";
 }
@@ -132,12 +135,13 @@ int main(int argc, char **argv)
     }
 
     /* Prepare every image before creating any outputs. A bad second input
-     * therefore cannot leave a successfully patched first DLL behind.
+     * therefore cannot leave a successfully patched first binary behind.
      */
     for (size_t i = 0; i < count; ++i) {
-        jobs[i].output = output_path(jobs[i].input, directory);
-        if (!jobs[i].output || !image_open(&jobs[i].image, jobs[i].input) ||
-            !image_patch(&jobs[i].image))
+        if (!image_open(&jobs[i].image, jobs[i].input))
+            goto done;
+        jobs[i].output = output_path(jobs[i].input, directory, jobs[i].image.profile->module);
+        if (!jobs[i].output || !image_patch(&jobs[i].image))
             goto done;
         printf("  %s -> %s%s\n", jobs[i].input, jobs[i].output, dry_run ? " (dry run)" : "");
     }

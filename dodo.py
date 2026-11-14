@@ -12,8 +12,9 @@ from doit.tools import config_changed
 ROOT = Path(__file__).resolve().parent
 PATCHER_BUILD = ROOT / "build"
 PATCHER = PATCHER_BUILD / "monkey-patcher" / "igw-monkey-patcher"
-INPUT_DLLS = [
-    ROOT / "input-binaries" / name for name in ("gamex86.dll", "cgamex86.dll", "uix86.dll")
+INPUT_BINARIES = [
+    ROOT / "input-binaries" / name
+    for name in ("gamex86.dll", "cgamex86.dll", "uix86.dll", "igwarlord.exe")
 ]
 DIST = ROOT / "dist"
 ASSET_BUILD = ROOT / "build" / "assets"
@@ -94,7 +95,7 @@ def _assemble_dist():
         staging.mkdir()
         _package_gamedir(staging / "igwlegacy.pk3")
         subprocess.run(
-            [str(PATCHER), "--output-dir", str(staging), *map(str, INPUT_DLLS)],
+            [str(PATCHER), "--output-dir", str(staging), *map(str, INPUT_BINARIES)],
             check=True,
         )
         if DIST.exists():
@@ -126,13 +127,13 @@ def task_textures():
 
 
 def task_dist():
-    """Package gamedir as igwlegacy.pk3 and add patched DLLs in dist/."""
+    """Package gamedir as igwlegacy.pk3 and add patched binaries in dist/."""
     return {
         "actions": [_assemble_dist],
         "task_dep": ["monkey_patcher", "textures"],
-        "file_dep": list(map(str, INPUT_DLLS))
+        "file_dep": list(map(str, INPUT_BINARIES))
         + [str(ASSET_BUILD / name) for name in TEXTURE_RULES],
         "targets": [str(DIST / "igwlegacy.pk3")]
-        + [str(DIST / path.name) for path in INPUT_DLLS],
+        + [str(DIST / path.name) for path in INPUT_BINARIES],
         "uptodate": [False],
     }

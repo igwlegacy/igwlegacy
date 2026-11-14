@@ -1,5 +1,6 @@
 patch_sources = files(
 	'disable_bobbing.c',
+	'fog.c',
 	'screen_shake.c',
 	'damage_kick.c',
 	'landing_dip.c',
