@@ -2,7 +2,7 @@
 games.log
 config.cfg
 
-input-dlls/
+input-binaries/
 dist/
 /build/
 .doit.db*

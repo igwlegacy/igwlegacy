@@ -5,7 +5,7 @@ binaries to start with the low-hanging fruits first.
 
 # Build
 Put the original IGW `gamex86.dll`, `cgamex86.dll`, and `uix86.dll` in
-`./input-dlls/`. A native C17 compiler must be available on `PATH`.
+`./input-binaries/`. A native C17 compiler must be available on `PATH`.
 
 ```sh
 pixi run build

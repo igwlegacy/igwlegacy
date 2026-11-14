@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parent
 PATCHER_BUILD = ROOT / "build"
 PATCHER = PATCHER_BUILD / "monkey-patcher" / "igw-monkey-patcher"
 INPUT_DLLS = [
-    ROOT / "input-dlls" / name for name in ("gamex86.dll", "cgamex86.dll", "uix86.dll")
+    ROOT / "input-binaries" / name for name in ("gamex86.dll", "cgamex86.dll", "uix86.dll")
 ]
 DIST = ROOT / "dist"
 ASSET_BUILD = ROOT / "build" / "assets"
