@@ -1,7 +1,7 @@
 #include "patches.h"
 
 /* Apply all six rules together: the calculation and print hooks share EBX. */
-const code_rule_t patch_respawn_countdown[6] = {
+static const code_rule_t patch_respawn_countdown[] = {
     /* CG_DrawDeathScreen: retain the unscaled remaining milliseconds in
      * EBX, which the localization and formatting calls preserve. Adding
      * 999 before the existing seconds conversion rounds positive times up.
@@ -42,3 +42,5 @@ const code_rule_t patch_respawn_countdown[6] = {
       { 0x89, 0xd8, 0x8d, 0x5c, 0x24, 0x4c,
         0xe9, B4(0x107f1u - 0xdad0u) } },
 };
+
+REGISTER_CODE_RULES(patch_respawn_countdown)

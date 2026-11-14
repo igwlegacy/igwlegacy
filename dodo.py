@@ -10,9 +10,8 @@ import zipfile
 from doit.tools import config_changed
 
 ROOT = Path(__file__).resolve().parent
-PATCHER_SOURCE = ROOT / "monkey-patcher"
-PATCHER_BUILD = PATCHER_SOURCE / "build"
-PATCHER = PATCHER_BUILD / "igw-monkey-patcher"
+PATCHER_BUILD = ROOT / "build"
+PATCHER = PATCHER_BUILD / "monkey-patcher" / "igw-monkey-patcher"
 INPUT_DLLS = [
     ROOT / "input-dlls" / name for name in ("gamex86.dll", "cgamex86.dll", "uix86.dll")
 ]
@@ -40,7 +39,7 @@ def _build_patcher():
     # Meson and Ninja track source changes and avoid unnecessary compilation.
     if not (PATCHER_BUILD / "meson-private" / "coredata.dat").is_file():
         subprocess.run(
-            ["meson", "setup", str(PATCHER_BUILD), str(PATCHER_SOURCE)], check=True
+            ["meson", "setup", str(PATCHER_BUILD), str(ROOT)], check=True
         )
     subprocess.run(["meson", "compile", "-C", str(PATCHER_BUILD)], check=True)
 

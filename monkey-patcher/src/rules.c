@@ -1,59 +1,78 @@
 #include "patches.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
-/* Keep rule order stable: it determines the generated CVAR payload layout.
- * Null sentinels allow either registry to be empty when disabling patches.
- */
-const cvar_rule_t *const cvar_rules[] = {
-    &patch_run_pitch,
-    &patch_run_roll,
-    &patch_bob_pitch,
-    &patch_bob_roll,
-    &patch_bob_up,
-    NULL,
-};
-const size_t cvar_rule_count = ARRAY_SIZE(cvar_rules) - 1;
+const cvar_rule_t *const *cvar_rules;
+size_t cvar_rule_count;
+const code_rule_t *const *code_rules;
+size_t code_rule_count;
 
-const code_rule_t *const code_rules[] = {
-    &patch_screen_shake,
-    &patch_damage_kick[0],
-    &patch_damage_kick[1],
-    &patch_damage_kick[2],
-    &patch_landing_dip,
-    &patch_death_camera[0],
-    &patch_death_camera[1],
-    &patch_death_camera[2],
-    &patch_respawn_countdown[0],
-    &patch_respawn_countdown[1],
-    &patch_respawn_countdown[2],
-    &patch_respawn_countdown[3],
-    &patch_respawn_countdown[4],
-    &patch_respawn_countdown[5],
-    &patch_main_menu_ad[0],
-    &patch_main_menu_ad[1],
-    &patch_main_menu_ad[2],
-    &patch_main_menu_ad[3],
-    &patch_main_menu_ad[4],
-    &patch_main_menu_ad[5],
-    &patch_main_menu_ad[6],
-    &patch_main_menu_ad[7],
-    &patch_main_menu_ad[8],
-    &patch_main_menu_ad[9],
-    &patch_main_menu_ad[10],
-    &patch_main_menu_github[0],
-    &patch_main_menu_github[1],
-    &patch_main_menu_github[2],
-    &patch_main_menu_github[3],
-    &patch_main_menu_github[4],
-    &patch_main_menu_github[5],
-    &patch_main_menu_github[6],
-    &patch_main_menu_github[7],
-    &patch_main_menu_github[8],
-    NULL,
-};
-const size_t code_rule_count = ARRAY_SIZE(code_rules) - 1;
+static rule_set_t *rule_sets;
+
+void rules_register(rule_set_t *rules)
+{
+    /* Constructor order varies by toolchain. Sort by registration name so
+     * the generated CVAR payload layout stays deterministic.
+     */
+    rule_set_t **position = &rule_sets;
+    while (*position && strcmp((*position)->name, rules->name) < 0)
+        position = &(*position)->next;
+    rules->next = *position;
+    *position = rules;
+}
+
+static bool rules_collect(void)
+{
+    static bool collected;
+    if (collected)
+        return true;
+
+    size_t cvar_count = 0, code_count = 0;
+    for (const rule_set_t *set = rule_sets; set; set = set->next) {
+        if (set->cvars) {
+            if (set->count > SIZE_MAX / sizeof(*cvar_rules) - cvar_count)
+                goto too_many;
+            cvar_count += set->count;
+        } else {
+            if (set->count > SIZE_MAX / sizeof(*code_rules) - code_count)
+                goto too_many;
+            code_count += set->count;
+        }
+    }
+
+    /* Empty registries need no allocation. Publish only complete tables so
+     * allocation failure cannot leave a partially registered patch set.
+     */
+    const cvar_rule_t **cvars = cvar_count ? malloc(cvar_count * sizeof(*cvars)) : NULL;
+    const code_rule_t **code = code_count ? malloc(code_count * sizeof(*code)) : NULL;
+    if ((cvar_count && !cvars) || (code_count && !code)) {
+        free(cvars);
+        free(code);
+        fputs("Could not allocate patch rules\n", stderr);
+        return false;
+    }
+    cvar_count = code_count = 0;
+    for (const rule_set_t *set = rule_sets; set; set = set->next) {
+        for (size_t i = 0; i < set->count; ++i) {
+            if (set->cvars)
+                cvars[cvar_count++] = &set->cvars[i];
+            else
+                code[code_count++] = &set->code[i];
+        }
+    }
+    cvar_rules = cvars;
+    cvar_rule_count = cvar_count;
+    code_rules = code;
+    code_rule_count = code_count;
+    collected = true;
+    return true;
+
+too_many:
+    fputs("Too many patch rules\n", stderr);
+    return false;
+}
 
 static unsigned char ascii_lower(unsigned char c)
 {
@@ -72,6 +91,8 @@ static bool same_name(const char *a, const char *b)
 
 bool rules_validate(void)
 {
+    if (!rules_collect())
+        return false;
     for (size_t i = 0; i < cvar_rule_count; ++i) {
         const cvar_rule_t *rule = cvar_rules[i];
         if ((rule->module != GAME && rule->module != CGAME) ||

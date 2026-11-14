@@ -10,6 +10,7 @@ patch_sources = files(
 	'death_camera.c',
 	'respawn_countdown.c',
 	'main_menu_ad.c',
+	'main_menu_github.c',
 )
 
 patch_include_dirs = include_directories('.')

@@ -52,10 +52,10 @@ typedef struct {
     uint32_t entry;
 } payload_t;
 
-extern const cvar_rule_t *const cvar_rules[];
-extern const size_t cvar_rule_count;
-extern const code_rule_t *const code_rules[];
-extern const size_t code_rule_count;
+extern const cvar_rule_t *const *cvar_rules;
+extern size_t cvar_rule_count;
+extern const code_rule_t *const *code_rules;
+extern size_t code_rule_count;
 
 uint16_t get16(const unsigned char *p);
 uint32_t get32(const unsigned char *p);

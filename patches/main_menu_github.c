@@ -9,7 +9,7 @@
  * the text buffer belonging to the disabled main-menu promotion. Keep the
  * push instruction's absolute operand in its existing relocation slot.
  */
-const code_rule_t patch_main_menu_github[9] = {
+static const code_rule_t patch_main_menu_github[] = {
     { UI, true, "main-menu GitHub: button label", 0x62a5c, 7,
       "#menu-l", "GITHUB" },
 
@@ -51,3 +51,5 @@ const code_rule_t patch_main_menu_github[9] = {
       { 0x80, 0x38, 0x23, 0x75, 0x11 },
       { 0xe8, B4(0x1dfafu - 0x2da80u) } },
 };
+
+REGISTER_CODE_RULES(patch_main_menu_github)

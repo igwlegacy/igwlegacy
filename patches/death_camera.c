@@ -1,6 +1,6 @@
 #include "patches.h"
 
-const code_rule_t patch_death_camera[3] = {
+static const code_rule_t patch_death_camera[] = {
     /* ClientThink_real: keep the deathTime != 0 guard, but omit the branch
      * that waits for deathTime + 3000. CopyToBodyQue runs once, followed by
      * clearing deathTime and entering the existing PM_SPECTATOR path.
@@ -27,3 +27,5 @@ const code_rule_t patch_death_camera[3] = {
       { 0x8b, 0xc8, 0xc1, 0xe1, 0x04, 0x2b, 0xc8 },
       { 0x33, 0xc9, 0x90, 0x90, 0x90, 0x90, 0x90 } },
 };
+
+REGISTER_CODE_RULES(patch_death_camera)

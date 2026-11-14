@@ -10,7 +10,7 @@
       { 0xe8, B4(0x2c130u - (where) - 5) }, \
       { 0x90, 0x90, 0x90, 0x90, 0x90 } }
 
-const code_rule_t patch_main_menu_ad[11] = {
+static const code_rule_t patch_main_menu_ad[] = {
     OMIT_ITEM("main-menu ad: background bitmap", 0x1fc9a),
     OMIT_ITEM("main-menu ad: foreground bitmap", 0x1fca9),
     OMIT_ITEM("main-menu ad: launch button", 0x1fcb8),
@@ -37,3 +37,5 @@ const code_rule_t patch_main_menu_ad[11] = {
       { 0x6a, 0x05, 0xe8, 0x69, 0xcf, 0x01, 0x00 },
       { 0xc3, 0x05, 0xe8, 0x69, 0xcf, 0x01, 0x00 } },
 };
+
+REGISTER_CODE_RULES(patch_main_menu_ad)

@@ -3,21 +3,46 @@
 
 #include "patcher.h"
 
-/* Each definition belongs to its functionality's .c file. The shared
- * registry references these rules without duplicating their settings.
+/* Registration records have static storage; startup only links them together.
+ * A record supplies either CVAR or code rules, preserving their array order.
  */
-extern const cvar_rule_t patch_run_pitch;
-extern const cvar_rule_t patch_run_roll;
-extern const cvar_rule_t patch_bob_pitch;
-extern const cvar_rule_t patch_bob_roll;
-extern const cvar_rule_t patch_bob_up;
-extern const code_rule_t patch_screen_shake;
-extern const code_rule_t patch_damage_kick[3];
-extern const code_rule_t patch_landing_dip;
-extern const code_rule_t patch_death_camera[3];
-extern const code_rule_t patch_respawn_countdown[6];
-extern const code_rule_t patch_main_menu_ad[11];
-extern const code_rule_t patch_main_menu_github[9];
+typedef struct rule_set {
+    const char *name;
+    const cvar_rule_t *cvars;
+    const code_rule_t *code;
+    size_t count;
+    struct rule_set *next;
+} rule_set_t;
+
+void rules_register(rule_set_t *rules);
+
+/* Run registration before main on both MSVC and GCC-compatible compilers. */
+#if defined(_MSC_VER)
+#pragma section(".CRT$XCU", read)
+#define PATCH_CONSTRUCTOR(name) \
+    static void __cdecl name(void); \
+    __declspec(allocate(".CRT$XCU")) static void (__cdecl *const name##_initializer)(void) = name; \
+    static void __cdecl name(void)
+#elif defined(__GNUC__) || defined(__clang__)
+#define PATCH_CONSTRUCTOR(name) \
+    static void name(void) __attribute__((constructor)); \
+    static void name(void)
+#else
+#error "Patch registration needs startup constructor support"
+#endif
+
+#define REGISTER_RULE_SET(name, cvars, code, count) \
+    static rule_set_t name##_rules = { #name, cvars, code, count, NULL }; \
+    PATCH_CONSTRUCTOR(name##_register) \
+    { \
+        rules_register(&name##_rules); \
+    }
+
+/* Scalars and arrays share the same registry, with no external declarations. */
+#define REGISTER_CVAR_RULE(rule) REGISTER_RULE_SET(rule, &(rule), NULL, 1)
+#define REGISTER_CVAR_RULES(rules) REGISTER_RULE_SET(rules, rules, NULL, ARRAY_SIZE(rules))
+#define REGISTER_CODE_RULE(rule) REGISTER_RULE_SET(rule, NULL, &(rule), 1)
+#define REGISTER_CODE_RULES(rules) REGISTER_RULE_SET(rules, NULL, rules, ARRAY_SIZE(rules))
 
 #define B4(a) (a) & 255, ((a) >> 8) & 255, ((a) >> 16) & 255, ((a) >> 24) & 255
 

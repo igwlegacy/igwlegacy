@@ -6,17 +6,19 @@ Each functionality has its own C file in [patches/](../patches/) at the reposito
 
 ## Build and use
 
+Run these commands from the repository root:
+
 ```sh
 meson setup build
 meson compile -C build
 
-build/igw-monkey-patcher --list
-build/igw-monkey-patcher --dry-run \
+build/monkey-patcher/igw-monkey-patcher --list
+build/monkey-patcher/igw-monkey-patcher --dry-run \
   ./gamex86.dll \
   ./cgamex86.dll \
   ./uix86.dll
 
-build/igw-monkey-patcher \
+build/monkey-patcher/igw-monkey-patcher \
   ./gamex86.dll \
   ./cgamex86.dll \
   ./uix86.dll
@@ -26,7 +28,7 @@ By default, this creates `gamex86.patched.dll`, `cgamex86.patched.dll`, and `uix
 
 ```sh
 mkdir -p patched
-build/igw-monkey-patcher --output-dir patched \
+build/monkey-patcher/igw-monkey-patcher --output-dir patched \
   ./gamex86.dll \
   ./cgamex86.dll \
   ./uix86.dll

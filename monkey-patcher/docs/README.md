@@ -16,7 +16,7 @@ Each functionality has a separate file in `patches/` at the repository root:
 | [respawn_countdown.c](../../patches/respawn_countdown.c) | Respawn countdown rounded up to seconds, with text expiring at the respawn deadline |
 | [main_menu_ad.c](../../patches/main_menu_ad.c) | Main-menu promotional panel, ticker, and update request |
 
-Edit the rule definitions in the corresponding file and rebuild. `src/rules.c` registers the rules by reference and validates them. Comment out a registry reference to omit that rule. For a new functionality, add its `.c` file to `patches/meson.build`, declare its rules in `patches/patches.h`, and reference them in `src/rules.c`. One functionality can supply several CVAR or instruction rules.
+Edit the rule definitions in the corresponding file and rebuild. Each file registers its own rules with `REGISTER_CVAR_RULE`, `REGISTER_CODE_RULE`, or their plural forms for arrays. Comment out a registration to omit those rules. For a new functionality, add its `.c` file to `patches/meson.build` and register its rules in that file; no declarations or patch lists need updating in shared C files. `src/rules.c` collects and validates the registered rules, sorting by registration name for a deterministic payload layout while preserving the order within each array. One functionality can supply several CVAR or instruction rules.
 
 | Setting                                 | Implementation                                                            |
 | ---                                     | ---                                                                       |
@@ -46,7 +46,7 @@ Edit the `cvar_rule_t` definition in the corresponding functionality file, then 
 { GAME, "g_bodytime", "0", CVAR_FORCE },
 ```
 
-The last three entries above are examples, not active preset rules. The registry references the feature definitions; its null sentinel permits an empty mapping. Remove individual registry references to leave those CVARs alone. String values can be longer than the original defaults because the patcher appends new storage instead of modifying shared string literals. Names and values have a 255-byte limit, and there can be at most 128 rules. Duplicate names within one module are rejected without regard to ASCII case.
+The last three entries above are examples, not active preset rules. Register a single definition with `REGISTER_CVAR_RULE(name)` or an array with `REGISTER_CVAR_RULES(name)`. Omit a registration to leave those CVARs alone; an empty registry is supported. String values can be longer than the original defaults because the patcher appends new storage instead of modifying shared string literals. Names and values have a 255-byte limit, and there can be at most 128 rules. Duplicate names within one module are rejected without regard to ASCII case.
 
 `CVAR_DEFAULT` replaces the fallback string passed to the engine during registration. Existing saved settings and subsequent changes still take precedence. It does not force a value.
 
