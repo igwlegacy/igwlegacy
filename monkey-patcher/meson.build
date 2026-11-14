@@ -20,6 +20,7 @@ executable(
   '../patches/damage_kick.c',
   '../patches/landing_dip.c',
   '../patches/main_menu_ad.c',
+  '../patches/main_menu_github.c',
   include_directories: include_directories('src', '../patches'),
   install: true,
 )
