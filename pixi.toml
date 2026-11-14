@@ -10,3 +10,5 @@ build = "doit"
 
 [dependencies]
 doit = "*"
+meson = "*"
+ninja = "*"
