@@ -70,6 +70,10 @@ static const char *module_name(module_t module)
 
 static void list_rules(void)
 {
+    for (size_t i = 0; i < payload_feature_count; ++i) {
+        const payload_feature_t *feature = payload_features[i];
+        printf("%s: enabled payload %s\n", module_name(feature->module), feature->name);
+    }
     for (size_t i = 0; i < cvar_rule_count; ++i) {
         const cvar_rule_t *r = cvar_rules[i];
         printf("%s: %s %s = \"%s\"\n", module_name(r->module),

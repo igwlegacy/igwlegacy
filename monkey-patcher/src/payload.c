@@ -178,6 +178,12 @@ bool payload_build(payload_t *payload, const profile_t *p, uint32_t rva)
     put32(payload->data + dispatcher_address, (uint32_t)payload->size);
     BYTES(&e, 0x55, 0x89, 0xe5, 0x53, 0x56, 0x57); /* frame; save ebx,esi,edi */
     section_base(&e);
+    /* Features either handle the call completely or continue through the
+     * existing CVAR rules. Relative jumps keep the whole chain relocatable.
+     */
+    BYTES(&e, 0xe9);
+    size_t feature_jump = word(&e, 0);
+    uint32_t next = (uint32_t)payload->size;
     BYTES(&e, 0x8b, 0x45, 8); /* eax=syscall number */
     const uint32_t calls[] = { p->cvar_register, p->cvar_update, p->cvar_set };
     const unsigned destinations[] = { REGISTER, UPDATE, SET };
@@ -255,6 +261,12 @@ bool payload_build(payload_t *payload, const profile_t *p, uint32_t rva)
     emit_equals(&e);
     for (size_t i = 0; i < e.fixup_count; ++i)
         link_to(&e, e.fixups[i].at, e.labels[e.fixups[i].label]);
+    for (size_t i = payload_feature_count; i > 0; --i) {
+        const payload_feature_t *feature = payload_features[i - 1];
+        if (feature->module == p->module && !feature->build(payload, rva, next, &next))
+            return false;
+    }
+    link_to(&e, feature_jump, next);
     if (!e.ok)
         fprintf(stderr, "CVAR payload exceeds its size or fixup limit\n");
     return e.ok;

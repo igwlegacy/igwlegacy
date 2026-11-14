@@ -8,6 +8,7 @@ patch_sources = files(
 	'shotgun.c',
 	'main_menu_ad.c',
 	'main_menu_github.c',
+	'valuable_markers.c',
 )
 
 patch_include_dirs = include_directories('.')

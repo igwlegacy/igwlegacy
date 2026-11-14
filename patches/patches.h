@@ -4,12 +4,13 @@
 #include "patcher.h"
 
 /* Registration records have static storage; startup only links them together.
- * A record supplies either CVAR or code rules, preserving their array order.
+ * A record supplies CVAR rules, code rules or injected payload features.
  */
 typedef struct rule_set {
     const char *name;
     const cvar_rule_t *cvars;
     const code_rule_t *code;
+    const payload_feature_t *features;
     size_t count;
     struct rule_set *next;
 } rule_set_t;
@@ -31,18 +32,19 @@ void rules_register(rule_set_t *rules);
 #error "Patch registration needs startup constructor support"
 #endif
 
-#define REGISTER_RULE_SET(name, cvars, code, count) \
-    static rule_set_t name##_rules = { #name, cvars, code, count, NULL }; \
+#define REGISTER_RULE_SET(name, cvars, code, features, count) \
+    static rule_set_t name##_rules = { #name, cvars, code, features, count, NULL }; \
     PATCH_CONSTRUCTOR(name##_register) \
     { \
         rules_register(&name##_rules); \
     }
 
 /* Scalars and arrays share the same registry, with no external declarations. */
-#define REGISTER_CVAR_RULE(rule) REGISTER_RULE_SET(rule, &(rule), NULL, 1)
-#define REGISTER_CVAR_RULES(rules) REGISTER_RULE_SET(rules, rules, NULL, ARRAY_SIZE(rules))
-#define REGISTER_CODE_RULE(rule) REGISTER_RULE_SET(rule, NULL, &(rule), 1)
-#define REGISTER_CODE_RULES(rules) REGISTER_RULE_SET(rules, NULL, rules, ARRAY_SIZE(rules))
+#define REGISTER_CVAR_RULE(rule) REGISTER_RULE_SET(rule, &(rule), NULL, NULL, 1)
+#define REGISTER_CVAR_RULES(rules) REGISTER_RULE_SET(rules, rules, NULL, NULL, ARRAY_SIZE(rules))
+#define REGISTER_CODE_RULE(rule) REGISTER_RULE_SET(rule, NULL, &(rule), NULL, 1)
+#define REGISTER_CODE_RULES(rules) REGISTER_RULE_SET(rules, NULL, rules, NULL, ARRAY_SIZE(rules))
+#define REGISTER_PAYLOAD_FEATURE(rule) REGISTER_RULE_SET(rule, NULL, NULL, &(rule), 1)
 
 #define B4(a) (a) & 255, ((a) >> 8) & 255, ((a) >> 16) & 255, ((a) >> 24) & 255
 

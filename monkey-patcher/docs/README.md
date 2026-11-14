@@ -16,8 +16,9 @@ Each functionality has a separate file in `patches/` at the repository root:
 | [respawn_countdown.c](../../patches/respawn_countdown.c) | Respawn countdown rounded up to seconds, with text expiring at the respawn deadline |
 | [shotgun.c](../../patches/shotgun.c) | Editable hardcoded shotgun stats and pellet damage falloff |
 | [main_menu_ad.c](../../patches/main_menu_ad.c) | Main-menu promotional panel, ticker, and update request |
+| [valuable_markers.c](../../patches/valuable_markers.c) | Persistent models at every valuable spawn position |
 
-Edit the rule definitions in the corresponding file and rebuild. Each file registers its own rules with `REGISTER_CVAR_RULE`, `REGISTER_CODE_RULE`, or their plural forms for arrays. Comment out a registration to omit those rules. For a new functionality, add its `.c` file to `patches/meson.build` and register its rules in that file; no declarations or patch lists need updating in shared C files. `src/rules.c` collects and validates the registered rules, sorting by registration name for a deterministic payload layout while preserving the order within each array. One functionality can supply several CVAR or instruction rules.
+Edit the rule definitions in the corresponding file and rebuild. Each file registers its own rules with `REGISTER_CVAR_RULE`, `REGISTER_CODE_RULE`, their plural forms for arrays, or `REGISTER_PAYLOAD_FEATURE`. Comment out a registration to omit those rules. For a new functionality, add its `.c` file to `patches/meson.build` and register its rules in that file; no declarations or patch lists need updating in shared C files. `src/rules.c` collects and validates the registered rules, sorting by registration name for a deterministic payload layout while preserving the order within each array. One functionality can supply several rules.
 
 | Setting                                 | Implementation                                                            |
 | ---                                     | ---                                                                       |
@@ -66,6 +67,16 @@ Install the resulting `gamex86.dll` on the server and `cgamex86.dll` on clients 
 
 The values were traced in the `reigw` source: `src/code/game/g_weapon.c` (`ShotgunPellet`, `ShotgunPattern`), `src/code/cgame/cg_weapons.c` (`CG_ShotgunPattern`), and `src/code/game/bg_pmove.c` (`PM_HeavyRifleWeapon`, `PM_LoadShell`, `PM_BeginShellReload`, `PM_FinishShell`). The corresponding retail addresses and guarded instructions are recorded in the patch.
 
+### Valuable spawn models
+
+The patched `cgamex86.dll` displays `models/props/jewelry01.md3` at every `item_jewel` position in the loaded map, including positions with no collectible. These are visual models only; collecting valuables, their random placement, and respawn timing retain the server's behavior. No server patch or additional asset is required.
+
+Set `VALUABLE_MARKER_MODEL` and `VALUABLE_MARKER_OFFSET_X`, `_Y`, and `_Z` at the top of `patches/valuable_markers.c`, then rebuild. The model path is relative to the game's virtual filesystem and must reference an available asset. Offsets default to zero and use world X/Y/Z map units, applied after floor placement; they also apply to suspended positions.
+
+`valuable_markers.c` reads and caches up to 1024 positions after the renderer loads the world. It consumes the BSP entity stream through EOF, which rewinds the token cursor for the client's original skybox parser. Unsuspended positions use a downward world collision trace with the valuable item's bounds; suspended positions retain their map origin. Map angles determine each model's orientation.
+
+Models are added only when rendering the main world's `cg.refdef`. HUD model scenes, the map render target, and hyperspace scenes are excluded. The cache is rebuilt on each world load, including renderer restarts. To omit this feature, comment out `REGISTER_PAYLOAD_FEATURE(valuable_markers)` and rebuild.
+
 ### CVAR mapping
 
 Edit the `cvar_rule_t` definition in the corresponding functionality file, then rebuild. Each entry specifies the module that registers the CVAR, its name, a string value, and the mode:
@@ -109,6 +120,6 @@ Only the retail files are accepted:
 
 The program checks file size and a whole-file FNV-1a 64-bit fingerprint, then verifies PE32/i386 headers and instruction guards. The SHA-256 values above are provided for independent identification. The fingerprint guards against accidental version differences, not malicious collisions. Supporting another release requires verifying its layout and patch sites and adding a profile in `src/pe.c`.
 
-For a module with CVAR rules, the patcher adds a writable and executable `.igwmonk` section with strings, handle storage, and an i386 syscall dispatcher. It redirects the `dllEntry` export to a position independent initializer that saves the real engine syscall pointer and installs the dispatcher in the DLL's original syscall global. The original `dllEntry` instructions and their relocation entries stay untouched. The PE loader entry point, `vmMain` export, and unrelated syscall arguments remain intact.
+For a module with CVAR rules or payload features, the patcher adds a writable and executable `.igwmonk` section with strings, runtime storage, and an i386 syscall dispatcher. Registered features chain ahead of the CVAR dispatcher and forward unhandled calls to it. It redirects the `dllEntry` export to a position independent initializer that saves the real engine syscall pointer and installs the dispatcher in the DLL's original syscall global. The original `dllEntry` instructions and their relocation entries stay untouched. The PE loader entry point, `vmMain` export, and unrelated syscall arguments remain intact.
 
 The dispatcher intercepts the standard C ABI at the engine boundary, avoiding the custom internal register conventions introduced by MSVC 9 whole program optimization. It uses `call`/`pop` and section-relative offsets, so its code and data need no additional base relocations. Existing relocations still apply to the camera instruction operands. The patcher converts RVAs through PE section headers, updates section sizes and `SizeOfImage`, and recomputes the PE checksum.

@@ -269,16 +269,24 @@ bool image_patch(image_t *image)
     const profile_t *p = image->profile;
     size_t changes = 0;
     printf("%s: known retail DLL\n", p->name);
-    bool has_cvars = false;
+    bool has_payload = false;
+    for (size_t i = 0; i < payload_feature_count; ++i) {
+        const payload_feature_t *feature = payload_features[i];
+        if (feature->module != p->module)
+            continue;
+        printf("  payload %s\n", feature->name);
+        has_payload = true;
+        ++changes;
+    }
     for (size_t i = 0; i < cvar_rule_count; ++i) {
         const cvar_rule_t *r = cvar_rules[i];
         if (r->module != p->module)
             continue;
         printf("  %s %s = \"%s\"\n", r->mode == CVAR_FORCE ? "force" : "default", r->name, r->value);
-        has_cvars = true;
+        has_payload = true;
         ++changes;
     }
-    if (has_cvars && !add_payload(image))
+    if (has_payload && !add_payload(image))
         return false;
     for (size_t i = 0; i < code_rule_count; ++i) {
         const code_rule_t *r = code_rules[i];
