@@ -13,20 +13,23 @@ meson compile -C build
 build/igw-monkey-patcher --list
 build/igw-monkey-patcher --dry-run \
   ./gamex86.dll \
-  ./cgamex86.dll
+  ./cgamex86.dll \
+  ./uix86.dll
 
 build/igw-monkey-patcher \
   ./gamex86.dll \
-  ./cgamex86.dll
+  ./cgamex86.dll \
+  ./uix86.dll
 ```
 
-By default, this creates `gamex86.patched.dll` and `cgamex86.patched.dll` beside the inputs. Use `--output-dir DIR` to write the original basenames into an existing directory instead:
+By default, this creates `gamex86.patched.dll`, `cgamex86.patched.dll`, and `uix86.patched.dll` beside the inputs. The UI DLL currently has no patch rules and is written unchanged after validation. Use `--output-dir DIR` to write the original basenames into an existing directory instead:
 
 ```sh
 mkdir -p patched
 build/igw-monkey-patcher --output-dir patched \
   ./gamex86.dll \
-  ./cgamex86.dll
+  ./cgamex86.dll \
+  ./uix86.dll
 ```
 
 Inputs are identified by their contents, so renamed input files work too. Existing outputs are never overwritten, including when an output path aliases an input. All inputs are validated and patched in memory before any output is created. A write failure removes outputs created by that invocation; a process crash or power loss can still leave files behind. `--dry-run` performs the same input and patch validation without creating outputs. `--` ends option parsing.

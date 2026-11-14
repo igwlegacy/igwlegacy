@@ -58,6 +58,7 @@ Only the retail files are accepted:
 | ---            | ---    | ---          | ---                                                                |
 | `gamex86.dll`  | 930304 | `0x4fbdcafd` | `61db8f1ca15bd6a8cf68ee98ce4af4420c7347fecdc327b2e557d7502c0931fe` |
 | `cgamex86.dll` | 911360 | `0x4fbdcb0d` | `d095cc681067f88827e7229953bcc9d8f66129d3fd680a034bb4266382f60985` |
+| `uix86.dll`    | 499712 | `0x4fbdcaee` | `90ab043eb8299c5852594a92bc5e6f958b97f6af55d9d0bcbbe8b81584f43dae` |
 
 The program checks file size and a whole-file FNV-1a 64-bit fingerprint, then verifies PE32/i386 headers and instruction guards. The SHA-256 values above are provided for independent identification. The fingerprint guards against accidental version differences, not malicious collisions. Supporting another release requires verifying its layout and patch sites and adding a profile in `src/pe.c`.
 

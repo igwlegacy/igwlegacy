@@ -9,7 +9,7 @@
 #define PATCH_MAX 16
 #define PAYLOAD_MAX 65536
 
-typedef enum { GAME, CGAME } module_t;
+typedef enum { GAME, CGAME, UI } module_t;
 typedef enum { CVAR_DEFAULT, CVAR_FORCE } cvar_mode_t;
 
 typedef struct {
