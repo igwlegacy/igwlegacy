@@ -1,0 +1,21 @@
+viewmodel 	"models/weapons/v_knife.md3"
+worldmodel	"models/weapons/w_sword.md3"
+bucket		0
+bucketpos	4
+weaponorder	4	
+weight          1
+
+//============================
+//Test weapon animation Script
+//=============================
+//activity               first frame    numframes     loopingframes 		FPS
+//----------------------------------------------------------------------------------
+ACT_IDLE			0		19		19			6
+ACT_PRIMARYATTACK		19		14		0			25
+ACT_SECONDARYATTACK		98		13		0			25
+ACT_DRAW			54		9		0			25
+ACT_HOLSTER			62		5		0			25
+
+
+//events
+//-----------------------------------------------------------------------------------

@@ -1,0 +1,21 @@
+viewmodel 	"models/weapons/v_suicide.md3"
+worldmodel	"models/weapons/w_suicide.md3"
+addonmodel	"models/weapons/w_suicidepacks.md3"
+bucket		4
+bucketpos	5
+weaponorder	19
+weight          1
+
+//============================
+//Test weapon animation Script
+//=============================
+//activity               first frame    numframes     loopingframes 		FPS
+//----------------------------------------------------------------------------------
+ACT_IDLE			8	10		10			8
+ACT_PRIMARYATTACK		19	12		0			25
+ACT_DRAW			0	8		0			25
+ACT_HOLSTER			35	6		0			25
+
+//events
+//-----------------------------------------------------------------------------------
+

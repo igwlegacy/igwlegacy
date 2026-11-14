@@ -1,0 +1,22 @@
+viewmodel 	"models/weapons/v_lpistol.md3"
+worldmodel	"models/weapons/w_lpistol.md3"
+clipsize	12
+primary_ammo	AMMO_LIGHTPISTOL
+bucket		1
+bucketpos	0
+weaponorder	4
+weight          2
+
+//============================
+//Test weapon animation Script
+//=============================
+//activity               first frame    numframes     loopingframes 		FPS
+//----------------------------------------------------------------------------------
+ACT_IDLE			0	20		0			10
+ACT_PRIMARYATTACK		21	10		0			25
+ACT_DRAW			76	9		0			25
+ACT_HOLSTER			85	6		0			25
+ACT_RELOAD			30	45		0			25
+
+//events
+//-----------------------------------------------------------------------------------

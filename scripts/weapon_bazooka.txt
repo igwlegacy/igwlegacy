@@ -1,0 +1,24 @@
+viewmodel 	"models/weapons/v_40rte.md3"
+worldmodel	"models/weapons/w_bazooka.md3"
+clipsize	1
+primary_ammo	AMMO_BAZOOKA
+bucket 4
+bucketpos 9     
+weaponorder	23
+weight          1
+
+//============================
+//Test weapon animation Script
+//=============================
+//activity               first frame    numframes     loopingframes 		FPS
+//----------------------------------------------------------------------------------
+ACT_IDLE			48	20		19			10
+ACT_PRIMARYATTACK		20	21		0			25
+ACT_HOLSTER			68	5		0			25
+ACT_DRAW			73	5		0			25
+ACT_UNDEPLOY			41	7		0			25
+ACT_DEPLOYED			0	20		19			25
+ACT_DEPLOY			78	10		0			25
+ACT_RELOAD			90	137		0			25
+
+//events-------------------------
