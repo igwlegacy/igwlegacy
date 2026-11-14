@@ -15,7 +15,7 @@ static const profile_t profiles[] = {
       0x4fbdcafd, 0x20000000, 0x2ca60, 0xb58bc, 4, 5, 6 },
     { CGAME, "cgamex86.dll", 911360, UINT64_C(0xcee1c445aa4ed8a5),
       0x4fbdcb0d, 0x30000000, 0x329e0, 0xc8b50, 3, 4, 5 },
-    /* UI has no patch rules, so its CVAR payload metadata remains unset. */
+    /* UI uses instruction patches only; its CVAR payload metadata is unset. */
     { .module = UI, .name = "uix86.dll", .size = 499712,
       .fingerprint = UINT64_C(0x921187794457deb6),
       .timestamp = 0x4fbdcaee, .image_base = 0x10000000 },

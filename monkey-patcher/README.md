@@ -22,7 +22,7 @@ build/igw-monkey-patcher \
   ./uix86.dll
 ```
 
-By default, this creates `gamex86.patched.dll`, `cgamex86.patched.dll`, and `uix86.patched.dll` beside the inputs. The UI DLL currently has no patch rules and is written unchanged after validation. Use `--output-dir DIR` to write the original basenames into an existing directory instead:
+By default, this creates `gamex86.patched.dll`, `cgamex86.patched.dll`, and `uix86.patched.dll` beside the inputs. The UI patch removes the main-menu promotional panel and its update request. Use `--output-dir DIR` to write the original basenames into an existing directory instead:
 
 ```sh
 mkdir -p patched

@@ -12,6 +12,7 @@ Each functionality has a separate file in `patches/` at the repository root:
 | [screen_shake.c](../../patches/screen_shake.c) | Explosion and death shake |
 | [damage_kick.c](../../patches/damage_kick.c) | Damage pitch and roll, including the return phase |
 | [landing_dip.c](../../patches/landing_dip.c) | Eye-height dip on landing |
+| [main_menu_ad.c](../../patches/main_menu_ad.c) | Main-menu promotional panel, ticker, and update request |
 
 Edit the rule definitions in the corresponding file and rebuild. `src/rules.c` registers the rules by reference and validates them. Comment out a registry reference to omit that rule. For a new functionality, add its `.c` file to `meson.build`, declare its rules in `patches/patches.h`, and reference them in `src/rules.c`. One functionality can supply several CVAR or instruction rules.
 
@@ -22,6 +23,7 @@ Edit the rule definitions in the corresponding file and rebuild. `src/rules.c` r
 | Explosion and death shake               | Return immediately from the shake starter                                 |
 | Damage pitch and roll                   | Read an existing zero constant; HUD damage indicators retain their values |
 | Landing dip                             | Read the zero constant                                                    |
+| Main-menu promotion                     | Omit the panel's menu items, ticker, and update request                    |
 
 Weapon recoil and weapon model sway retain their original behavior. Recoil changes the actual aim in shared player movement code and would require corresponding server and client patches. The preset has no active `gamex86` rules, so its output is an unchanged copy until you enable a rule for that module.
 
@@ -49,6 +51,12 @@ Rules activate when the selected DLL registers the named CVAR. They cover the ma
 Each `code_rule_t` definition in a functionality file holds an enable switch, an RVA, expected bytes, and replacement bytes for an instruction patch. Set `enabled` to `false` to skip a patch. Each rule can cover up to 16 bytes; enabled overlapping ranges are rejected. The expected bytes must match before output is written.
 
 The supplied shake patch replaces the first opcode with `ret` and checks the rest of the original instructions. This is valid because reverse engineering established that this function returns void and its callers clean up the stack. A function that returns a value, uses a different calling convention, or has required side effects needs a different patch. Address operands in replacement code must keep the existing relocation positions valid; arbitrary new absolute addresses need relocation support that the generic byte patch table does not provide.
+
+### Main-menu promotion
+
+In the retail UI DLL, the menu initializer at RVA `0x1e390` assigns `textures/ui/motdsmall_IGM` to the bitmap items at VAs `0x10100ea8` and `0x10100dc4`. The generic bitmap renderer at RVA `0x2c8a0` loads their shader names through the registration wrapper at RVA `0x3a2f0`. The engine resolves the extensionless shader name to the texture asset. The initializer also supplies the default Marauders promotional text and `http://igmarauders.isotx.com` link. The response parser can select other images through the `igm`, `igl`, `igw`, and `isotx` topic table at VA `0x1006d484`.
+
+The patch omits the nine promotional menu-item registration calls while retaining their argument pushes and stack cleanup. It returns from the menu draw callback at RVA `0x1e1fc` after the normal menu/error draw, releasing its reserved stack word before returning, to skip response handling and the separately rendered ticker. The request starter at RVA `0x1dde0` returns before calling engine syscall 121 with request type 5. Original absolute operands and their relocation slots remain intact.
 
 ## DLL support and implementation
 

@@ -14,6 +14,7 @@ extern const cvar_rule_t patch_bob_up;
 extern const code_rule_t patch_screen_shake;
 extern const code_rule_t patch_damage_kick[3];
 extern const code_rule_t patch_landing_dip;
+extern const code_rule_t patch_main_menu_ad[11];
 
 #define B4(a) (a) & 255, ((a) >> 8) & 255, ((a) >> 16) & 255, ((a) >> 24) & 255
 

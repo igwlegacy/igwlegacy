@@ -58,16 +58,26 @@ static char *output_path(const char *input, const char *directory)
     return result;
 }
 
+static const char *module_name(module_t module)
+{
+    switch (module) {
+    case GAME: return "gamex86";
+    case CGAME: return "cgamex86";
+    case UI: return "uix86";
+    }
+    return "unknown";
+}
+
 static void list_rules(void)
 {
     for (size_t i = 0; i < cvar_rule_count; ++i) {
         const cvar_rule_t *r = cvar_rules[i];
-        printf("%s: %s %s = \"%s\"\n", r->module == GAME ? "gamex86" : "cgamex86",
+        printf("%s: %s %s = \"%s\"\n", module_name(r->module),
                r->mode == CVAR_FORCE ? "force" : "default", r->name, r->value);
     }
     for (size_t i = 0; i < code_rule_count; ++i) {
         const code_rule_t *r = code_rules[i];
-        printf("%s: %s code %s\n", r->module == GAME ? "gamex86" : "cgamex86",
+        printf("%s: %s code %s\n", module_name(r->module),
                r->enabled ? "enabled" : "disabled", r->name);
     }
 }

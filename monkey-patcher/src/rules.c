@@ -22,6 +22,17 @@ const code_rule_t *const code_rules[] = {
     &patch_damage_kick[1],
     &patch_damage_kick[2],
     &patch_landing_dip,
+    &patch_main_menu_ad[0],
+    &patch_main_menu_ad[1],
+    &patch_main_menu_ad[2],
+    &patch_main_menu_ad[3],
+    &patch_main_menu_ad[4],
+    &patch_main_menu_ad[5],
+    &patch_main_menu_ad[6],
+    &patch_main_menu_ad[7],
+    &patch_main_menu_ad[8],
+    &patch_main_menu_ad[9],
+    &patch_main_menu_ad[10],
     NULL,
 };
 const size_t code_rule_count = ARRAY_SIZE(code_rules) - 1;
@@ -62,7 +73,7 @@ bool rules_validate(void)
     }
     for (size_t i = 0; i < code_rule_count; ++i) {
         const code_rule_t *rule = code_rules[i];
-        if ((rule->module != GAME && rule->module != CGAME) ||
+        if ((rule->module != GAME && rule->module != CGAME && rule->module != UI) ||
             !rule->size || rule->size > PATCH_MAX) {
             fprintf(stderr, "Invalid code rule %zu\n", i);
             return false;
