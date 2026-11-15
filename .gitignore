@@ -1,11 +1,17 @@
 *.dll
 games.log
 config.cfg
+TODO
+
+*.xcf
+*-*-*-*-*.png
+*-concept.png
 
 input-binaries/
 dist/
 /build/
 .doit.db*
+
 __pycache__/
 .cache
 

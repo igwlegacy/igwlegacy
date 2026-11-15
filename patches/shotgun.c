@@ -9,18 +9,23 @@
  * Base damage, ammo capacity and other config/script values are not patched.
  * Primary pellets receive the distance multiplier below on the server.
  */
-#define SHOTGUN_PELLETS               11
+/* #define SHOTGUN_PELLETS               11 */ /*OG*/
+#define SHOTGUN_PELLETS               30
 #define SHOTGUN_PRIMARY_FIRE_INTERVAL_MS    1200
-#define SHOTGUN_SECONDARY_FIRE_INTERVAL_MS  1200
+/* #define SHOTGUN_SECONDARY_FIRE_INTERVAL_MS  600 */ /*OG*/
+#define SHOTGUN_SECONDARY_FIRE_INTERVAL_MS  600
 #define SHOTGUN_SHELLS_PER_RELOAD     2
 #define SHOTGUN_SHELL_RELOAD_MS       820
 #define SHOTGUN_LAST_SHELL_RELOAD_MS  2020
 #define SHOTGUN_RELOAD_FINISH_MS      50
 #define SHOTGUN_KICK_DURATION_MS      40
+
 /* Linear falloff between these ranges; 100 percent disables attenuation. */
-#define SHOTGUN_FALLOFF_START_UNITS   512
-#define SHOTGUN_FALLOFF_END_UNITS     2048
+#define SHOTGUN_FALLOFF_START_UNITS   100
+#define SHOTGUN_FALLOFF_END_UNITS     400
 #define SHOTGUN_FALLOFF_MIN_PERCENT   25
+
+/* static const double shotgun_spread = 1600.0; */
 static const double shotgun_spread = 700.0;
 static const float shotgun_kick_pitch = 0.1f;
 static const float shotgun_kick_yaw = 0.05f;

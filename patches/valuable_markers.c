@@ -7,10 +7,11 @@
 /* Edit these settings and rebuild. Offsets use world X/Y/Z map units and
  * are applied after floor placement, including to suspended spawn points.
  */
-#define VALUABLE_MARKER_MODEL     "models/props/jewelry01.md3"
+// #define VALUABLE_MARKER_MODEL     "models/props/jewelry01.md3"
+#define VALUABLE_MARKER_MODEL     "models/mapobjects/item_highlight/item_highlight.md3"
 #define VALUABLE_MARKER_OFFSET_X  0.0f
 #define VALUABLE_MARKER_OFFSET_Y  0.0f
-#define VALUABLE_MARKER_OFFSET_Z  0.0f
+#define VALUABLE_MARKER_OFFSET_Z  -15.0f
 
 _Static_assert(sizeof(float) == 4 && FLT_RADIX == 2 && FLT_MANT_DIG == 24,
                "Valuable marker offsets require IEEE binary32 floats");

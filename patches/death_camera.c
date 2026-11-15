@@ -3,7 +3,7 @@
 /* Fraction of the normal 400 units/second during the first three seconds.
  * Set to 0.1 for a 90% reduction, then rebuild the patcher.
  */
-static const float death_spectator_speed_scale = 0.1f;
+static const float death_spectator_speed_scale = 0.03f;
 
 static code_rule_t patch_death_camera[] = {
     /* ClientThink_real: a positive deathTime still needs CopyToBodyQue.
