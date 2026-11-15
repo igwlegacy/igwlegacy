@@ -52,9 +52,15 @@ TEXTURE_RULES = {
     ),
 }
 
-# Blender sources below raw-assets/ exported as static MD3s.
+# Blender sources below raw-assets/ exported as static MD3s, with the shader
+# name written to every surface. One .blend can thus back several models,
+# e.g. the round and square highlights with different textures. The shaders
+# themselves live in gamedir/scripts/.
 MODEL_RULES = {
-    "models/mapobjects/item_highlight/item_highlight.md3": "models/item_highlight.blend",
+    "models/mapobjects/item_highlight/item_highlight.md3": (
+        "models/item_highlight_round.blend",
+        "models/mapobjects/item_highlight/item_highlight",
+    ),
 }
 MD3_EXPORTER = ROOT / "model-converter" / "export_md3.py"
 MD3_ADDON = ROOT / "model-converter" / "Blender_BSP_Importer" / "import_bsp"
@@ -83,7 +89,7 @@ def _convert_texture(source, size, output):
     subprocess.run(command, check=True)
 
 
-def _convert_model(source, output):
+def _convert_model(source, shader, output):
     # Like textures, generated models stay outside gamedir.
     output.parent.mkdir(parents=True, exist_ok=True)
     # Factory settings keep user add-ons and preferences out of the export,
@@ -100,6 +106,7 @@ def _convert_model(source, output):
             str(MD3_EXPORTER),
             "--",
             str(output),
+            shader,
         ],
         check=True,
     )
@@ -200,14 +207,16 @@ def task_models():
     # The exporter imports these add-on modules, so changes to any of them
     # must re-export.
     addon_sources = sorted(str(path) for path in MD3_ADDON.rglob("*.py"))
-    for name, filename in MODEL_RULES.items():
+    for name, (filename, shader) in MODEL_RULES.items():
         source = ROOT / "raw-assets" / filename
         output = ASSET_BUILD / name
         yield {
             "name": Path(name).name,
-            "actions": [(_convert_model, [source, output])],
+            "actions": [(_convert_model, [source, shader, output])],
             "file_dep": [str(source), str(MD3_EXPORTER), *addon_sources],
             "targets": [str(output)],
+            # Re-export when only the shader of a rule changes.
+            "uptodate": [config_changed({"shader": shader})],
         }
 
 

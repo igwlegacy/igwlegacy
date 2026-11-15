@@ -5,7 +5,7 @@ Blender add-on, vendored as the Blender_BSP_Importer submodule next to this
 script. Run it headless:
 
     blender --background --factory-startup model.blend \
-        --python-exit-code 1 --python export_md3.py -- OUT.md3
+        --python-exit-code 1 --python export_md3.py -- OUT.md3 [SHADER]
 
 --factory-startup keeps the user's preferences and add-ons out of the
 export, and --python-exit-code makes errors fail the Blender process.
@@ -18,6 +18,9 @@ Conventions:
     * Surfaces are merged per material and the material name is written as
       the surface shader, so it must be the shader path without extension.
       Everything after the first "." of a material name is dropped.
+    * An optional SHADER replaces the name of the single material used by
+      the exported meshes, so one .blend can back several MD3s that differ
+      only in their shader, e.g. the same mesh with different textures.
     * At most 999 vertices per surface and 32 surfaces, the limits of Quake
       3 era engines.
     * OUT.md3 should contain "/models/": the part from there on is stored as
@@ -56,13 +59,38 @@ def _load_md3_module():
     return MD3
 
 
-def export(out_path):
+def _override_shader(meshes, shader):
+    """Rename the only material of the exported meshes to SHADER.
+
+    The rename only affects the loaded scene; the .blend is never saved.
+    """
+    materials = {
+        slot.material for obj in meshes for slot in obj.material_slots if slot.material
+    }
+    if len(materials) != 1:
+        raise RuntimeError(
+            f"shader override needs exactly one material, found {len(materials)}"
+        )
+    # The exporter drops everything after the first ".", so the name must
+    # not contain one, and Blender silently truncates overlong names.
+    if "." in shader:
+        raise RuntimeError(f"shader name {shader!r} must not contain a '.'")
+    material = materials.pop()
+    material.name = shader
+    if material.name != shader:
+        raise RuntimeError(f"could not rename material to {shader!r}")
+
+
+def export(out_path, shader=None):
     md3 = _load_md3_module()
     scene = bpy.context.scene
     # Hidden objects are construction or reference helpers, not model parts.
     objects = [obj for obj in scene.objects if obj.visible_get()]
-    if not any(obj.type == "MESH" for obj in objects):
+    meshes = [obj for obj in objects if obj.type == "MESH"]
+    if not meshes:
         raise RuntimeError("no visible mesh objects to export")
+    if shader is not None:
+        _override_shader(meshes, shader)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     ok, status = md3.ExportMD3(
         out_path.as_posix(),
@@ -80,9 +108,9 @@ def export(out_path):
 
 if __name__ == "__main__":
     args = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
-    if len(args) != 1:
+    if len(args) not in (1, 2):
         raise SystemExit(
             "usage: blender --background --factory-startup model.blend "
-            "--python-exit-code 1 --python export_md3.py -- OUT.md3"
+            "--python-exit-code 1 --python export_md3.py -- OUT.md3 [SHADER]"
         )
-    export(Path(args[0]).resolve())
+    export(Path(args[0]).resolve(), args[1] if len(args) == 2 else None)
