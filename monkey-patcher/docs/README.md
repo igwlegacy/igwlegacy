@@ -20,6 +20,7 @@ Each functionality has a separate file in `patches/` at the repository root:
 | [respawn_countdown.c](../../patches/respawn_countdown.c) | Respawn countdown rounded up to seconds, with text expiring at the respawn deadline |
 | [shotgun.c](../../patches/shotgun.c) | Editable hardcoded shotgun stats and pellet damage falloff |
 | [hmg_reload.c](../../patches/hmg_reload.c) | HMG reloading while undeployed and cancellation by undeploying |
+| [spawn_protection.c](../../patches/spawn_protection.c) | Spawn protection time, forced to 2000 ms |
 | [main_menu_ad.c](../../patches/main_menu_ad.c) | Main-menu promotional panel, ticker, and update request |
 | [valuable_markers.c](../../patches/valuable_markers.c) | Persistent models at every valuable spawn position |
 
@@ -34,6 +35,7 @@ Edit the rule definitions in the corresponding file and rebuild. Each file regis
 | Landing dip                             | Read the zero constant                                                    |
 | Death camera                            | Enter spectator movement immediately; omit the slow rise and spectator lift |
 | Respawn countdown                       | Round remaining seconds up and expire the final message at the respawn deadline |
+| `sk_immortal_time`                      | Force `SPAWN_PROTECTION_MS` (`"2000"`)                                     |
 | Main-menu promotion                     | Omit the panel's menu items, ticker, and update request                    |
 | Intro video                             | Never queue the startup `cinematic` command; the command remains available |
 | `r_useShaders`                          | Force `1` at renderer registration and at every renderer read |
@@ -80,6 +82,12 @@ The values were traced in the `reigw` source: `src/code/game/g_weapon.c` (`Shotg
 The HMG (`WP_HEAVYMG`) can reload while undeployed, either automatically with an empty clip or manually with a partially filled clip and reserve ammo. It stays undeployed afterward; a reload started while deployed still finishes deployed. Pressing secondary attack during a deployed reload cancels the reload and undeploys, even with an empty clip. Cancellation transfers no ammunition and uses the normal undeploy animation and timing. Reload duration, Firepower Upgrade scaling and ammunition transfer on completion keep their original behavior.
 
 Install the patched `gamex86.dll` on the server and `cgamex86.dll` on clients together. [hmg_reload.c](../../patches/hmg_reload.c) selects the existing undeployed reload state for an undeployed HMG, allowing the original reload completion code to restore its ready state. Comment out `REGISTER_CODE_RULES(patch_hmg_reload)` and rebuild to omit this feature.
+
+### Spawn protection
+
+A freshly spawned player takes no damage and no knockback for `SPAWN_PROTECTION_MS` milliseconds, 2000 by default. Edit the constant at the top of [spawn_protection.c](../../patches/spawn_protection.c) and rebuild. Only the patched `gamex86.dll` on the server is required.
+
+The retail game already implements this protection: `ClientSpawn` marks the player with eFlags `0x800`, `G_Damage` ignores damage to marked players unless it bypasses protection, and `ClientThink` clears the mark after `sk_immortal_time` milliseconds. Every shipped `skill-*.cfg` sets that CVAR to `3000`. The patch forces `sk_immortal_time` with a `CVAR_FORCE` rule, so the configured time applies on every difficulty and the skill configs' own `set` is rejected as read only. Suicide and team changes still end the protection early.
 
 ### Valuable spawn models
 

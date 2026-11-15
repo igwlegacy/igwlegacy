@@ -14,6 +14,7 @@ patch_sources = files(
 	'skip_intro.c',
 	'use_shaders.c',
 	'heat_haze.c',
+	'spawn_protection.c',
 )
 
 patch_include_dirs = include_directories('.')
