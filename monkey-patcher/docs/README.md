@@ -24,6 +24,7 @@ Each functionality has a separate file in `patches/` at the repository root:
 | [team_repair.c](../../patches/team_repair.c) | Toolkit refills a teammate's current clip for money |
 | [main_menu_ad.c](../../patches/main_menu_ad.c) | Main-menu promotional panel, ticker, and update request |
 | [valuable_markers.c](../../patches/valuable_markers.c) | Persistent models at every valuable spawn position |
+| [rts_buildable.c](../../patches/rts_buildable.c) | Translucent green overlay on buildable terrain in RTS mode |
 
 Edit the rule definitions in the corresponding file and rebuild. Each file registers its own rules with `REGISTER_CVAR_RULE`, `REGISTER_CODE_RULE`, their plural forms for arrays, or `REGISTER_PAYLOAD_FEATURE`. Comment out a registration to omit those rules. For a new functionality, add its `.c` file to `patches/meson.build` and register its rules in that file; no declarations or patch lists need updating in shared C files. `src/rules.c` collects and validates the registered rules, sorting by registration name for a deterministic payload layout while preserving the order within each array. One functionality can supply several rules.
 
@@ -105,6 +106,18 @@ Set `VALUABLE_MARKER_MODEL` and `VALUABLE_MARKER_OFFSET_X`, `_Y`, and `_Z` at th
 `valuable_markers.c` reads and caches up to 1024 positions after the renderer loads the world. It consumes the BSP entity stream through EOF, which rewinds the token cursor for the client's original skybox parser. Unsuspended positions use a downward world collision trace with the valuable item's bounds; suspended positions retain their map origin. Map angles determine each model's orientation.
 
 Models are added only when rendering the main world's `cg.refdef`. HUD model scenes, the map render target, and hyperspace scenes are excluded. The cache is rebuilt on each world load, including renderer restarts. To omit this feature, comment out `REGISTER_PAYLOAD_FEATURE(valuable_markers)` and rebuild.
+
+### RTS buildable terrain
+
+In RTS mode, map-marked buildable surfaces receive a green tint that keeps the terrain texture readable underneath. The main world view enables it automatically; leaving RTS mode restores the normal view. Install the patched executable, `cgamex86.dll`, and the PK3 containing `scripts/rts_buildable.shader` together.
+
+The shader multiplies red and blue by `0.6`, then adds `0.1` green. Adjust those two `rgbGen const` values to change the strength. A plain alpha-blended green is unsuitable: constant colours bypass the engine's overbright compensation, so even 35% opacity covers the mostly dark ground almost completely.
+
+Most maps mark buildable ground per brush face rather than per material: the BSP brush side's flags word becomes collision surface flag `0x80000` at map load, which the renderer never sees. Only `centro` and `brokengate` additionally mark whole materials (contents `0x400`).
+
+A world surface whose material carries surface flag `0x80000` (`surfaceparm canbuild`) or contents `0x400` is highlighted directly. Any other upward-facing world face is classified once, the first time it is drawn, using the same world trace the server's build check uses (`G_CheckBuildSpot`, mask `0x2011801`). The trace passes through the centre of the face's first triangle along its normal. The result is cached in the face's unused plane padding until the next map load. Planar faces also require an upward normal of at least `0.6`, as in `G_CheckBuildSpot`. Curved and triangle surfaces, and the faces of brush models such as doors, follow only their material's marking. This shows terrain eligibility. The server still checks a structure's footprint, nearby structures, special placement rules, and the player's money when building.
+
+The client passes the overlay shader handle in the unused upper 16 bits of the main world refdef's `rdflags`. The renderer retains the original terrain draw and submits the same geometry with a translucent, unlit green shader. The inlined world and brush-model submission loops route through the same overlay helper. Models, HUD scenes and the map render target retain their usual rendering. All four registrations at the end of `patches/rts_buildable.c` belong together; comment them out and rebuild to omit the feature.
 
 ### CVAR mapping
 

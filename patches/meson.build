@@ -16,6 +16,7 @@ patch_sources = files(
 	'heat_haze.c',
 	'spawn_protection.c',
 	'team_repair.c',
+	'rts_buildable.c',
 )
 
 patch_include_dirs = include_directories('.')
