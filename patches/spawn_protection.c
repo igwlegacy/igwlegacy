@@ -3,7 +3,7 @@
 /* Edit this setting and rebuild: how long, in milliseconds, a freshly
  * spawned player cannot be damaged.
  */
-#define SPAWN_PROTECTION_MS 2000
+#define SPAWN_PROTECTION_MS 3000
 
 _Static_assert(SPAWN_PROTECTION_MS >= 0,
                "Spawn protection time must not be negative");
