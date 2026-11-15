@@ -7,7 +7,10 @@
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 #define PATCH_MAX 16
-#define PAYLOAD_MAX 65536
+/* Upper bound for one module's injected section, code and data together.
+ * Marker features reserve sizable zero-filled caches and file buffers.
+ */
+#define PAYLOAD_MAX 0x40000
 
 typedef enum { GAME, CGAME, UI, ENGINE } module_t;
 typedef enum { CVAR_DEFAULT, CVAR_FORCE } cvar_mode_t;

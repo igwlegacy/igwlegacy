@@ -230,7 +230,8 @@ static bool add_payload(image_t *image)
         fprintf(stderr, "No room for the payload's section header\n");
         return false;
     }
-    payload_t payload;
+    /* Too large for comfortable stack use; images are patched one by one. */
+    static payload_t payload;
     if (!payload_build(&payload, image->profile, rva) ||
         !align_up((uint32_t)payload.size, file_alignment, &raw_size) ||
         rva > UINT32_MAX - payload.size ||
