@@ -1,6 +1,8 @@
 #include "patches.h"
 
 #include <float.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 /* weapon_hrifle / WP_HEAVYRIFLE is the shotgun. Edit these tuning values
@@ -30,6 +32,16 @@ static const double shotgun_spread = 700.0;
 static const float shotgun_kick_pitch = 0.1f;
 static const float shotgun_kick_yaw = 0.05f;
 
+/* Every secondary shot that fires pushes the shooter straight
+ * away from the aim direction by this many units per second, like a rocket
+ * jump: aiming at the floor launches upwards, aiming ahead pushes back.
+ * For comparison, a regular jump is 270 and a Quake 3 rocket jump ~500.
+ * Like retail knockback, it then suspends ground friction for
+ * SHOTGUN_PUSH_KNOCKBACK_MS unless another movement timer is running.
+ */
+static const float shotgun_push_velocity = 300.0f;
+#define SHOTGUN_PUSH_KNOCKBACK_MS     200
+
 /* The server initializes its pellet loop with lea esi,[ebx+imm8], EBX=0.
  * A positive signed byte also prevents its decrement loop wrapping at 0.
  */
@@ -52,6 +64,9 @@ _Static_assert(SHOTGUN_FALLOFF_START_UNITS >= 0 &&
                SHOTGUN_FALLOFF_MIN_PERCENT >= 1 &&
                SHOTGUN_FALLOFF_MIN_PERCENT <= 100,
                "Invalid shotgun falloff range or minimum percentage");
+_Static_assert(SHOTGUN_PUSH_KNOCKBACK_MS >= 1 &&
+               SHOTGUN_PUSH_KNOCKBACK_MS <= INT32_MAX,
+               "Shotgun push knockback time must be a positive signed 32-bit value");
 _Static_assert(sizeof(float) == 4 && FLT_RADIX == 2 && FLT_MANT_DIG == 24 &&
                sizeof(double) == 8 && DBL_MANT_DIG == 53,
                "Shotgun constants require IEEE binary32 and binary64");
@@ -143,9 +158,10 @@ static const code_rule_t patch_shotgun_instructions[] = {
  * In padding after PM_FillClip (game 0x13381 / cgame 0x4bb1), compute:
  *   weaponTime += primary + secondary_flag * (secondary - primary);
  * The helper preserves EBP and ESI. Its relative call needs no relocation.
- * Keep each helper and its call enabled together.
+ * The call site enters the shotgun push below, which tail-jumps here.
+ * Keep each helper, the push fragments and the call enabled together.
  */
-#define SHOTGUN_COOLDOWN(module, helper, site) \
+#define SHOTGUN_COOLDOWN(module, helper, entry, site) \
     { module, true, "shotgun: attack cooldown helper", helper, 15, \
       { 0xcc, 0xcc, 0xcc, 0xcc, 0xcc, 0xcc, 0xcc, 0xcc, \
         0xcc, 0xcc, 0xcc, 0xcc, 0xcc, 0xcc, 0xcc }, \
@@ -154,12 +170,164 @@ static const code_rule_t patch_shotgun_instructions[] = {
         0x05, B4(SHOTGUN_PRIMARY_FIRE_INTERVAL_MS), 0x01, 0x46, 0x2c, 0xc3 } }, \
     { module, true, "shotgun: separate attack cooldowns", site, 7, \
       { 0x81, 0x46, 0x2c, B4(1200) }, \
-      { 0xe8, B4(helper - (site + 5u)), 0x90, 0x90 } }
+      { 0xe8, B4(entry - (site + 5u)), 0x90, 0x90 } }
+
+/* Unused int3 padding for the push fragments, in chaining order. The first
+ * slot of each list is the entry the cooldown call site jumps to.
+ */
+#define SHOTGUN_PUSH_GAME_ENTRY  0xe601u
+#define SHOTGUN_PUSH_CGAME_ENTRY 0x2132u
 
 static const code_rule_t patch_shotgun_cooldowns[] = {
-    SHOTGUN_COOLDOWN(GAME, 0x13381u, 0x13b2au),
-    SHOTGUN_COOLDOWN(CGAME, 0x4bb1u, 0x534fu),
+    SHOTGUN_COOLDOWN(GAME, 0x13381u, SHOTGUN_PUSH_GAME_ENTRY, 0x13b2au),
+    SHOTGUN_COOLDOWN(CGAME, 0x4bb1u, SHOTGUN_PUSH_CGAME_ENTRY, 0x534fu),
 };
+
+/* The push runs at the cooldown call site of PM_HeavyRifleWeapon, so it
+ * runs in both DLLs' pmove and client prediction matches the server. There
+ * ESI is the playerState and EBX the PM_AmmoForAttack result: nonzero only
+ * when the shot actually fired (the dry-fire path also reaches the site).
+ * EBP is the resolved attack (0 = primary, 1 = secondary, as for the
+ * cooldown helper); only secondary shots push. EAX, ECX and EDX are free
+ * before the PM_CheckNoAmmo tail call.
+ *
+ * pml.forward cannot be reused: PM_WalkMove and PM_AirMove flatten it
+ * before PM_Weapon runs. Recompute the aim direction from viewangles
+ * (pitch at ps + 0x98, yaw at + 0x9c) like AngleVectors does:
+ *   forward = (cos p * cos y, cos p * sin y, -sin p)
+ *   velocity (ps + 0x20) -= forward * shotgun_push_velocity
+ * then, like G_Damage's knockback, if pm_time (ps + 0x10) is 0, set it
+ * and PMF_TIME_KNOCKBACK (0x40 in pm_flags, ps + 0x0c) so ground friction
+ * does not swallow the push right away. Both float constants are pushed
+ * as immediates, so the code is position independent and needs no new
+ * relocations. The x87 stack is balanced and only ESP changes temporarily.
+ *
+ * No padding slot is large enough for the whole helper, so the packer
+ * below spreads whole instructions over int3 padding slots, chaining
+ * them with jmp rel32.
+ */
+typedef struct {
+    unsigned char bytes[7];
+    size_t size;
+    /* The trailing rel32 targets the cooldown helper. */
+    bool to_cooldown;
+} shotgun_insn_t;
+
+typedef struct {
+    uint32_t rva;
+    size_t size;
+} shotgun_slot_t;
+
+static const shotgun_slot_t shotgun_push_game_slots[] = {
+    { SHOTGUN_PUSH_GAME_ENTRY, 15 }, { 0xf062, 14 }, { 0x10222, 14 },
+    { 0x10431, 15 }, { 0x10972, 14 }, { 0x10f31, 15 }, { 0x10fe2, 14 },
+    { 0x11bb1, 15 }, { 0x13682, 14 }, { 0x16211, 15 }, { 0x163f2, 14 },
+    { 0x17702, 14 }, { 0x177d1, 15 }, { 0x186f2, 14 },
+    { 0x18821, 15 },
+};
+static const shotgun_slot_t shotgun_push_cgame_slots[] = {
+    { SHOTGUN_PUSH_CGAME_ENTRY, 14 }, { 0x2422, 14 }, { 0x7c12, 14 },
+    { 0x8962, 14 }, { 0x8a82, 14 }, { 0x8d32, 14 }, { 0xb8d1, 15 },
+    { 0xc021, 15 }, { 0xc592, 14 }, { 0xca92, 14 }, { 0xd0d2, 14 },
+    { 0xdd81, 15 }, { 0xf401, 15 }, { 0xfd71, 15 },
+};
+
+static code_rule_t patch_shotgun_push_game[ARRAY_SIZE(shotgun_push_game_slots)];
+static code_rule_t patch_shotgun_push_cgame[ARRAY_SIZE(shotgun_push_cgame_slots)];
+
+/* Place the instructions in order, keeping room for the chaining jmp in
+ * every slot but the last. Each rule guards its complete int3 slot and
+ * leaves the unused tail as int3. Every listed slot must end up used, so
+ * a stale slot list fails loudly instead of silently registering rules.
+ */
+static void pack_shotgun_push(module_t module, const shotgun_slot_t *slots,
+                              size_t slot_count, code_rule_t *rules,
+                              const shotgun_insn_t *insns, size_t insn_count,
+                              uint32_t cooldown)
+{
+    size_t slot = 0, used = 0;
+
+    for (size_t s = 0; s < slot_count; ++s) {
+        rules[s] = (code_rule_t){ module, true, "shotgun push: fragment",
+                                  slots[s].rva, slots[s].size, { 0 }, { 0 } };
+        memset(rules[s].expected, 0xcc, slots[s].size);
+        memset(rules[s].replacement, 0xcc, slots[s].size);
+    }
+    for (size_t i = 0; i < insn_count; ++i) {
+        size_t reserve = i + 1 < insn_count ? 5 : 0;
+        unsigned char *out;
+
+        if (used + insns[i].size + reserve > slots[slot].size) {
+            uint32_t at = slots[slot].rva + (uint32_t)used;
+            if (slot + 1 == slot_count)
+                break;
+            rules[slot].replacement[used] = 0xe9;
+            put32(rules[slot].replacement + used + 1, slots[slot + 1].rva - (at + 5u));
+            ++slot;
+            used = 0;
+            if (insns[i].size + reserve > slots[slot].size)
+                break;
+        }
+        out = rules[slot].replacement + used;
+        memcpy(out, insns[i].bytes, insns[i].size);
+        used += insns[i].size;
+        if (insns[i].to_cooldown)
+            put32(out + insns[i].size - 4, cooldown - (slots[slot].rva + (uint32_t)used));
+        if (i + 1 == insn_count && slot + 1 == slot_count)
+            return;
+    }
+    fprintf(stderr, "shotgun push: the %s padding slots do not fit the helper exactly\n",
+            module == GAME ? "game" : "cgame");
+    exit(EXIT_FAILURE);
+}
+
+PATCH_CONSTRUCTOR(configure_shotgun_push)
+{
+    uint32_t push, deg2rad;
+    const float radians_per_degree = 0.017453292519943295f;
+    shotgun_insn_t insns[] = {
+        { { 0x85, 0xdb }, 2, false },                  /* test ebx,ebx */
+        { { 0x0f, 0x84, 0, 0, 0, 0 }, 6, true },       /* jz cooldown (no shot) */
+        { { 0x85, 0xed }, 2, false },                  /* test ebp,ebp */
+        { { 0x0f, 0x84, 0, 0, 0, 0 }, 6, true },       /* jz cooldown (primary) */
+        { { 0x68 }, 5, false },                        /* push deg2rad */
+        { { 0x68 }, 5, false },                        /* push velocity */
+        { { 0xd9, 0x86, B4(0x98) }, 6, false },        /* fld [esi+0x98] (pitch) */
+        { { 0xd8, 0x4c, 0x24, 0x04 }, 4, false },      /* fmul [esp+4] */
+        { { 0xd9, 0xfb }, 2, false },                  /* fsincos: cp, sp */
+        { { 0xd9, 0x86, B4(0x9c) }, 6, false },        /* fld [esi+0x9c] (yaw) */
+        { { 0xd8, 0x4c, 0x24, 0x04 }, 4, false },      /* fmul [esp+4] */
+        { { 0xd9, 0xfb }, 2, false },                  /* fsincos: cy, sy, cp, sp */
+        { { 0xd9, 0x04, 0x24 }, 3, false },            /* fld [esp]: v, cy, sy, cp, sp */
+        { { 0x83, 0xc4, 0x08 }, 3, false },            /* add esp,8 */
+        { { 0xdc, 0xcb }, 2, false },                  /* fmul st3,st0: v*cp */
+        { { 0xde, 0xcc }, 2, false },                  /* fmulp st4,st0: cy, sy, vcp, vsp */
+        { { 0xd8, 0xca }, 2, false },                  /* fmul st0,st2: vcp*cy */
+        { { 0xd8, 0x6e, 0x20 }, 3, false },            /* fsubr [esi+0x20] */
+        { { 0xd9, 0x5e, 0x20 }, 3, false },            /* fstp [esi+0x20]: sy, vcp, vsp */
+        { { 0xde, 0xc9 }, 2, false },                  /* fmulp st1,st0: vcp*sy, vsp */
+        { { 0xd8, 0x6e, 0x24 }, 3, false },            /* fsubr [esi+0x24] */
+        { { 0xd9, 0x5e, 0x24 }, 3, false },            /* fstp [esi+0x24]: vsp */
+        { { 0xd8, 0x46, 0x28 }, 3, false },            /* fadd [esi+0x28] */
+        { { 0xd9, 0x5e, 0x28 }, 3, false },            /* fstp [esi+0x28]: empty */
+        { { 0x83, 0x7e, 0x10, 0x00 }, 4, false },      /* cmp dword [esi+0x10],0 */
+        { { 0x0f, 0x85, 0, 0, 0, 0 }, 6, true },       /* jne cooldown */
+        { { 0xc7, 0x46, 0x10, B4((uint32_t)SHOTGUN_PUSH_KNOCKBACK_MS) }, 7, false },
+        { { 0x83, 0x4e, 0x0c, 0x40 }, 4, false },      /* or [esi+0xc],0x40 */
+        { { 0xe9, 0, 0, 0, 0 }, 5, true },             /* jmp cooldown */
+    };
+
+    /* Write the floats' IEEE bits as little-endian push immediates. */
+    memcpy(&push, &shotgun_push_velocity, sizeof(push));
+    memcpy(&deg2rad, &radians_per_degree, sizeof(deg2rad));
+    put32(insns[4].bytes + 1, deg2rad);
+    put32(insns[5].bytes + 1, push);
+
+    pack_shotgun_push(GAME, shotgun_push_game_slots, ARRAY_SIZE(shotgun_push_game_slots),
+                      patch_shotgun_push_game, insns, ARRAY_SIZE(insns), 0x13381u);
+    pack_shotgun_push(CGAME, shotgun_push_cgame_slots, ARRAY_SIZE(shotgun_push_cgame_slots),
+                      patch_shotgun_push_cgame, insns, ARRAY_SIZE(insns), 0x4bb1u);
+}
 
 /* Redirect only ShotgunPellet's G_Damage call (0x367d6). Its existing
  * damage selection still distinguishes players from NPCs; the incendiary
@@ -310,5 +478,7 @@ PATCH_CONSTRUCTOR(configure_shotgun_constants)
 REGISTER_CODE_RULES(patch_shotgun_constants)
 REGISTER_CODE_RULES(patch_shotgun_instructions)
 REGISTER_CODE_RULES(patch_shotgun_cooldowns)
+REGISTER_CODE_RULES(patch_shotgun_push_game)
+REGISTER_CODE_RULES(patch_shotgun_push_cgame)
 REGISTER_CODE_RULES(patch_shotgun_falloff)
 REGISTER_CODE_RULES(patch_shotgun_reload)
