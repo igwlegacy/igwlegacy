@@ -12,7 +12,7 @@
  * native size, 2 doubles it. At any size, the model's bounds stay centered
  * horizontally and their bottom rests on the dropped position plus offsets.
  */
-#define STRONGHOLD_MARKER_MODEL     "models/mapobjects/item_highlight/item_highlight.md3"
+#define STRONGHOLD_MARKER_MODEL     "models/mapobjects/item_highlight/item_highlight_stronghold.md3"
 #define STRONGHOLD_MARKER_OFFSET_X  0.0f
 #define STRONGHOLD_MARKER_OFFSET_Y  0.0f
 #define STRONGHOLD_MARKER_OFFSET_Z  0.0f
