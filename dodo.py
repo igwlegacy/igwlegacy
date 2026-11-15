@@ -157,9 +157,6 @@ def _assemble_dist():
         pk3 = staging / DIST_PK3.relative_to(DIST)
         pk3.parent.mkdir(parents=True)
         _package_gamedir(pk3)
-        # Give the PK3 the same rwxr-xr-x mode as the patched binaries next
-        # to it, independent of the umask.
-        pk3.chmod(0o755)
         subprocess.run(
             [str(PATCHER), "--output-dir", str(staging), *map(str, INPUT_BINARIES)],
             check=True,
