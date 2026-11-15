@@ -14,8 +14,9 @@ git submodule update --init
 pixi run build
 ```
 
-The output in `./dist/` contains `gamex86.dll`, `cgamex86.dll`, `uix86.dll`, and `igwarlord.exe`
-alongside `igwlegacy.pk3`, a plain ZIP archive of the contents of `./gamedir/`
+The output in `./dist/` contains `igwarlord.exe` and `base/` with `gamex86.dll`,
+`cgamex86.dll`, and `uix86.dll`, alongside `igwlegacy.pk3`, a plain ZIP archive
+of the contents of `./gamedir/`
 plus the assets generated from `./raw-assets/`: textures converted with
 `idt3tc` and Blender models exported as static MD3s by
 [`model-converter/export_md3.py`](model-converter/export_md3.py). The

@@ -123,6 +123,15 @@ def _package_gamedir(output):
             )
 
 
+def _dist_path(binary):
+    """Return where a patched binary goes below dist/."""
+    # The DLLs belong in the base game directory, the executable stays at
+    # the top of the distribution.
+    if binary.suffix.lower() == ".dll":
+        return Path("base", binary.name)
+    return Path(binary.name)
+
+
 def _assemble_dist():
     # Stage a fresh tree so patch failures preserve the previous distribution
     # and successful builds discard assets removed from gamedir.
@@ -134,6 +143,12 @@ def _assemble_dist():
             [str(PATCHER), "--output-dir", str(staging), *map(str, INPUT_BINARIES)],
             check=True,
         )
+        # The patcher writes every binary to one directory; sort them into
+        # their final places while still staging.
+        for binary in INPUT_BINARIES:
+            target = staging / _dist_path(binary)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            (staging / binary.name).replace(target)
         if DIST.exists():
             shutil.rmtree(DIST)
         staging.replace(DIST)
@@ -179,13 +194,16 @@ def task_models():
 
 
 def task_dist():
-    """Package gamedir as igwlegacy.pk3 and add patched binaries in dist/."""
+    """Package gamedir as igwlegacy.pk3 and add patched binaries in dist/.
+
+    The patched DLLs go to dist/base/, the executable to dist/.
+    """
     return {
         "actions": [_assemble_dist],
         "task_dep": ["monkey_patcher", "textures", "models"],
         "file_dep": list(map(str, INPUT_BINARIES))
         + [str(ASSET_BUILD / name) for name in GENERATED_ASSETS],
         "targets": [str(DIST / "igwlegacy.pk3")]
-        + [str(DIST / path.name) for path in INPUT_BINARIES],
+        + [str(DIST / _dist_path(path)) for path in INPUT_BINARIES],
         "uptodate": [False],
     }
