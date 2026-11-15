@@ -1,6 +1,5 @@
 *.dll
 games.log
-config.cfg
 TODO
 
 *.xcf
