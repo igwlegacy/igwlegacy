@@ -15,6 +15,37 @@
 #define TEAM_REPAIR_AMMO_PER_HIT  1
 #define TEAM_REPAIR_COST_PER_HIT  1
 
+/* weapon_t as in reigw's bg_public.h; the values index ps.clip[] and the
+ * weapon scripts. Only weapons in TEAM_REPAIR_WEAPONS get their clip
+ * refilled; hits while a teammate holds another weapon are free and do
+ * nothing.
+ */
+enum {
+    WP_NONE, WP_MAP, WP_KNIFE, WP_TOOLKIT, WP_SWORD, WP_LIGHTPISTOL,
+    WP_SNIPER, WP_LIGHTRIFLE /* Musket */, WP_RGE, WP_LIGHTMG2, WP_HEAVYMG,
+    WP_HEAVYRIFLE /* shotgun */, WP_MACHINEGUN, WP_CONF_LIGHTMG,
+    WP_CONF_BAZOOKA, WP_TEMPLARMG, WP_MINIGUN, WP_FLAMETHROWER, WP_MOLOTOV,
+    WP_SATCHEL, WP_DYNAMITE, WP_DETONATOR, WP_HANDGRENADE, WP_SHIELD,
+    WP_LANDMINE, WP_SUICIDE, WP_MEDKIT, WP_RADIO, WP_ROCKET_LAUNCHER,
+    WP_NUM_WEAPONS
+};
+
+#define TEAM_REPAIR_WEAPON(w)       (1u << (w))
+#define TEAM_REPAIR_ALL_WEAPONS     ((1u << WP_NUM_WEAPONS) - 1u)
+
+/* For example, to allow only rifles and machine guns:
+ * #define TEAM_REPAIR_WEAPONS (TEAM_REPAIR_WEAPON(WP_LIGHTRIFLE) | \
+ *                              TEAM_REPAIR_WEAPON(WP_SNIPER) | \
+ *                              TEAM_REPAIR_WEAPON(WP_LIGHTMG2) | \
+ *                              TEAM_REPAIR_WEAPON(WP_HEAVYMG))
+ */
+#define TEAM_REPAIR_WEAPONS         TEAM_REPAIR_ALL_WEAPONS
+
+/* The helper tests the weapon's bit in a 32-bit register. */
+_Static_assert(WP_NUM_WEAPONS <= 32, "Weapon whitelist must fit 32 bits");
+_Static_assert((TEAM_REPAIR_WEAPONS & ~TEAM_REPAIR_ALL_WEAPONS) == 0,
+               "Weapon whitelist names an unknown weapon");
+
 _Static_assert(TEAM_REPAIR_AMMO_PER_HIT >= 1 &&
                TEAM_REPAIR_AMMO_PER_HIT <= INT32_MAX,
                "Team repair must add at least one round per hit");
@@ -86,6 +117,9 @@ static const op_t team_repair_ops[] = {
        B4((uint32_t)TEAM_REPAIR_COST_PER_HIT)),
     JL,
     OP(0x8b, 0x88, B4(0x90)),                       /* ecx=target weapon */
+    OP(0xbb, B4((uint32_t)TEAM_REPAIR_WEAPONS)),    /* ebx=whitelist */
+    OP(0x0f, 0xa3, 0xcb),                           /* bt ebx,ecx */
+    JCC(0x83),                                      /* jnc: not allowed */
     OP(0x8d, 0x84, 0x88, B4(0x1e4)),                /* eax=&clip[weapon] */
     OP(0x69, 0xc9, B4(0x2848)),                     /* ecx=script offset */
     { ANCHOR, 6, 0, { 0xe8, 0, 0, 0, 0, 0x5b }, 0, false },
@@ -118,7 +152,7 @@ static code_rule_t patch_team_repair_helper[] = {
     SLOT(0x42571u), SLOT(0x43071u), SLOT(0x43a61u), SLOT(0x444f1u),
     SLOT(0x44961u), SLOT(0x44af1u), SLOT(0x45541u), SLOT(0x45581u),
     SLOT(0x464b1u), SLOT(0x464e1u), SLOT(0x46941u), SLOT(0x46bb1u),
-    SLOT(0x47301u),
+    SLOT(0x47301u), SLOT(0x4b091u), SLOT(0x4cd51u),
 };
 
 /* Keep the hook and all helper fragments enabled together. */
