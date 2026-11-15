@@ -22,6 +22,7 @@ patch_sources = files(
 	'heat_haze.c',
 	'spawn_protection.c',
 	'team_repair.c',
+	'rts_spectator.c',
 	# 'rts_buildable.c',
 )
 

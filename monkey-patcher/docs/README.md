@@ -23,6 +23,7 @@ Each functionality has a separate file in `patches/` at the repository root:
 | [hmg_reload.c](../../patches/hmg_reload.c) | HMG reloading while undeployed and cancellation by undeploying |
 | [spawn_protection.c](../../patches/spawn_protection.c) | Spawn protection time, forced to 2000 ms |
 | [team_repair.c](../../patches/team_repair.c) | Toolkit refills a teammate's current clip for money |
+| [rts_spectator.c](../../patches/rts_spectator.c) | Prevent entering RTS mode while spectating or dead |
 | [main_menu_ad.c](../../patches/main_menu_ad.c) | Main-menu promotional panel, ticker, and update request |
 | [autoplay.c](../../patches/autoplay.c) | Automatically enter the game once loading finishes, without clicking `PLAY!` |
 | [valuable_markers.c](../../patches/valuable_markers.c) | Persistent models at every valuable spawn position |
@@ -123,6 +124,10 @@ Dynamite positions are the map's `weapon_dynamite` entities. Rocket launcher and
 Every position drops to the first surface a point trace hits within 4096 units below it, as items do; the trace starts `PICKUP_MARKER_TRACE_LIFT` units above the position. Set the model paths, `PICKUP_MARKER_OFFSET_X`, `_Y` and `_Z`, `PICKUP_MARKER_SIZE` and the trace lift at the top of `patches/pickup_markers.c`, then rebuild.
 
 The positions are read and cached on the first main-world render after each world load, consuming the BSP entity stream through EOF like `valuable_markers.c`. Wave scripts are read up to 32 KiB. The feature name must sort before `valuable_markers`, because that feature does not pass world loads on to later features. To omit this feature, comment out `REGISTER_PAYLOAD_FEATURE(pickup_markers)` and rebuild.
+
+### RTS spectator guard
+
+The patched `gamex86.dll` rejects `togglerts` while the player's movement type is `PM_SPECTATOR` or their `EF_DEAD` flag is set. This includes death spectating, where the player keeps their original session team and has entity health reset to 1, and the interval before the first spectator update. The checks run before both teams' RTS paths. Only the server needs this patch. Keep all four rules in [rts_spectator.c](../../patches/rts_spectator.c) enabled together.
 
 ### RTS buildable terrain
 
