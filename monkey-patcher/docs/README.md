@@ -18,6 +18,7 @@ Each functionality has a separate file in `patches/` at the repository root:
 | [landing_dip.c](../../patches/landing_dip.c) | Eye-height dip on landing |
 | [death_camera.c](../../patches/death_camera.c) | Immediate spectator movement after death, without automatic camera rise |
 | [respawn_countdown.c](../../patches/respawn_countdown.c) | Respawn countdown rounded up to seconds, with text expiring at the respawn deadline |
+| [centerprint_position.c](../../patches/centerprint_position.c) | Crosshair centerprints (round start, round winner, airstrike, server `cp`) moved up a quarter of the screen |
 | [shotgun.c](../../patches/shotgun.c) | Editable hardcoded shotgun stats and pellet damage falloff |
 | [hmg_reload.c](../../patches/hmg_reload.c) | HMG reloading while undeployed and cancellation by undeploying |
 | [spawn_protection.c](../../patches/spawn_protection.c) | Spawn protection time, forced to 2000 ms |
@@ -39,6 +40,7 @@ Edit the rule definitions in the corresponding file and rebuild. Each file regis
 | Landing dip                             | Read the zero constant                                                    |
 | Death camera                            | Enter spectator movement immediately; omit the slow rise and spectator lift |
 | Respawn countdown                       | Round remaining seconds up and expire the final message at the respawn deadline |
+| Centerprint position                    | Callers that centre the message box on the crosshair push a y offset of `-120` (480-line units) instead of `0` |
 | `sk_immortal_time`                      | Force `SPAWN_PROTECTION_MS` (`"2000"`)                                     |
 | Main-menu promotion                     | Omit the panel's menu items, ticker, and update request                    |
 | Intro video                             | Never queue the startup `cinematic` command; the command remains available |
@@ -51,6 +53,8 @@ Weapon model sway retains its original behavior. The shotgun patch provides matc
 Immediate death spectating requires the patched `gamex86.dll` on the server and `cgamex86.dll` on the client. The server creates the corpse and enables spectator movement on the first client update after death, without the 3000 ms delay or the upward relocation of up to 256 units. The client omits the 15-unit-per-second rise while awaiting the spectator state. The respawn timer remains unchanged.
 
 The respawn countdown fix requires only the patched `cgamex86.dll` on the client. `CG_DrawDeathScreen` rounds the remaining milliseconds up to seconds and gives its centerprint the remaining time as its lifetime. The final `SPAWNING IN: 1` therefore covers the last second and expires at the server's advertised respawn deadline. Other centerprints keep their usual lifetime, and the server's respawn timing is unchanged. The two helpers occupy guarded function-alignment padding and use relative calls and jumps, so no new PE relocations are needed.
+
+The centerprint position change requires only the patched `cgamex86.dll` on the client. IGW draws centerprints on a dark band and treats their y argument as an offset from the screen centre in 480-line units, so messages printed with `0`, such as `ROUND STARTS IN` and `AIRSTRIKE PREVENTED!`, covered the crosshair. Those callers now pass `-CENTERPRINT_RAISE` (`120`, a quarter of the screen height), which places the band's centre at a quarter of the screen from the top. Messages that already sit below the crosshair keep their positions. Each change replaces the sign-extended immediate of a `push`, so no relocated operands are touched.
 
 ### Hardcoded shotgun stats
 

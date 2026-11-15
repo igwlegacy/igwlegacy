@@ -6,6 +6,7 @@ patch_sources = files(
 	'landing_dip.c',
 	'death_camera.c',
 	'respawn_countdown.c',
+	'centerprint_position.c',
 	'shotgun.c',
 	'hmg_reload.c',
 	'main_menu_ad.c',
