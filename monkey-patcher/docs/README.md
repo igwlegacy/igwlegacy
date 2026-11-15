@@ -21,6 +21,7 @@ Each functionality has a separate file in `patches/` at the repository root:
 | [shotgun.c](../../patches/shotgun.c) | Editable hardcoded shotgun stats and pellet damage falloff |
 | [hmg_reload.c](../../patches/hmg_reload.c) | HMG reloading while undeployed and cancellation by undeploying |
 | [spawn_protection.c](../../patches/spawn_protection.c) | Spawn protection time, forced to 2000 ms |
+| [team_repair.c](../../patches/team_repair.c) | Toolkit refills a teammate's current clip for money |
 | [main_menu_ad.c](../../patches/main_menu_ad.c) | Main-menu promotional panel, ticker, and update request |
 | [valuable_markers.c](../../patches/valuable_markers.c) | Persistent models at every valuable spawn position |
 
@@ -88,6 +89,12 @@ Install the patched `gamex86.dll` on the server and `cgamex86.dll` on clients to
 A freshly spawned player takes no damage and no knockback for `SPAWN_PROTECTION_MS` milliseconds, 2000 by default. Edit the constant at the top of [spawn_protection.c](../../patches/spawn_protection.c) and rebuild. Only the patched `gamex86.dll` on the server is required.
 
 The retail game already implements this protection: `ClientSpawn` marks the player with eFlags `0x800`, `G_Damage` ignores damage to marked players unless it bypasses protection, and `ClientThink` clears the mark after `sk_immortal_time` milliseconds. Every shipped `skill-*.cfg` sets that CVAR to `3000`. The patch forces `sk_immortal_time` with a `CVAR_FORCE` rule, so the configured time applies on every difficulty and the skill configs' own `set` is rejected as read only. Suicide and team changes still end the protection early.
+
+### Team repair
+
+The toolkit can repair teammates. Every toolkit hit on a living player of the same team adds up to `TEAM_REPAIR_AMMO_PER_HIT` rounds to the clip of the weapon that player is holding, never beyond its clip size. The teammate's reserve ammo is not touched. Each hit that adds at least one round costs the repairing player `TEAM_REPAIR_COST_PER_HIT` money, also when the last hit only tops up the remainder. A player with less money than that cannot repair teammates, and hits on a full clip or a weapon without a clip are free and do nothing. The toolkit hits every 150 ms while the attack button stays down, so the defaults of one round for one money per hit refill about 6.7 rounds per second. Edit both constants at the top of [team_repair.c](../../patches/team_repair.c) and rebuild; the ammo must be at least 1 and the cost between 0 and 9999. Only the patched `gamex86.dll` on the server is required.
+
+`Weapon_Toolkit_Fire` (gamex86 0x36f80) returns for anything that is neither a stronghold nor a built structure. The patch redirects that return for entities below the structure types to a helper, which handles live `ET_PLAYER` entities with a client on the repairer's team and otherwise continues to the original return. While repairing, it sets the same "working" flag in the repairer's `ps.eFlags` that structure repairs set. The helper is packed into 15-byte function-alignment padding slots after `ret` instructions, chained by relative jumps. It reads the weapon scripts' clip sizes through a `call`/`pop` base, so no new PE relocations are needed. Keep the hook and all helper fragments enabled together; to omit the feature, comment out both `REGISTER_CODE_RULES` lines in the file and rebuild.
 
 ### Valuable spawn models
 
