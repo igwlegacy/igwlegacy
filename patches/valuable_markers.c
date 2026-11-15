@@ -4,14 +4,18 @@
 #include <stdio.h>
 #include <string.h>
 
-/* Edit these settings and rebuild. Offsets use world X/Y/Z map units and
- * are applied after floor placement, including to suspended spawn points.
+/* Edit these settings and rebuild. Like retail's FinishSpawningItem, each
+ * marker drops onto the first surface a point trace hits straight below its
+ * spawn point. The trace starts TRACE_LIFT map units above the spawn point,
+ * so spots resting on or slightly inside the floor still find it. Offsets
+ * use world X/Y/Z map units and fine-tune the dropped position.
  */
 // #define VALUABLE_MARKER_MODEL     "models/props/jewelry01.md3"
 #define VALUABLE_MARKER_MODEL     "models/mapobjects/item_highlight/item_highlight.md3"
 #define VALUABLE_MARKER_OFFSET_X  0.0f
 #define VALUABLE_MARKER_OFFSET_Y  0.0f
-#define VALUABLE_MARKER_OFFSET_Z  -15.0f
+#define VALUABLE_MARKER_OFFSET_Z  0.0f
+#define VALUABLE_MARKER_TRACE_LIFT 15.0f
 
 _Static_assert(sizeof(float) == 4 && FLT_RADIX == 2 && FLT_MANT_DIG == 24,
                "Valuable marker offsets require IEEE binary32 floats");
@@ -34,14 +38,13 @@ _Static_assert(sizeof(VALUABLE_MARKER_MODEL) > 1,
 enum {
     MAX_SPOTS = 1024, SPOT_SIZE = 48, REF_ENTITY_SIZE = 0xa68,
     LOAD_WORLD = 36, REGISTER_MODEL = 37, ADD_ENTITY = 41, RENDER_SCENE = 44,
-    BOX_TRACE = 25, GET_TOKEN = 86,
-    RETAIL_ATOF = 0x84dc9, RETAIL_ATOI = 0x82e32,
+    BOX_TRACE = 25, GET_TOKEN = 86, MASK_PLAYERSOLID = 0x2010801,
+    FLOAT_ONE = 0x3f800000, RETAIL_ATOF = 0x84dc9,
     RETAIL_ANGLES_TO_AXIS = 0x3c0d0, MAIN_REFDEF = 0xd9e7a0,
 };
 
 enum {
-    LOAD, NEXT_ENTITY, NEXT_KEY, CLASSNAME, ORIGIN, ANGLES, ANGLE,
-    SPAWNFLAGS, SAVE, KEEP_ORIGIN, LOADED, DRAW, DRAW_LOOP, PASS,
+    LOAD, NEXT_ENTITY, NEXT_KEY, CLASSNAME, ORIGIN, ANGLES, ANGLE, SAVE, KEEP_ORIGIN, LOADED, DRAW, DRAW_LOOP, PASS,
     TOKEN, EQUALS, EQUALS_LOOP, UNEQUAL, VECTOR, VECTOR_NEXT,
     VECTOR_NUMBER, VECTOR_SKIP, VECTOR_DELIMITER, VECTOR_OK, VECTOR_BAD,
     LABEL_COUNT
@@ -180,6 +183,11 @@ static void copy_vector(markers_emitter_t *e, uint32_t source, uint32_t destinat
 
 static bool build_markers(payload_t *payload, uint32_t rva, uint32_t next, uint32_t *entry)
 {
+    const float lift = VALUABLE_MARKER_TRACE_LIFT;
+    if (!(lift >= 0 && lift <= FLT_MAX)) {
+        fputs("Valuable marker trace lift must be finite and non-negative\n", stderr);
+        return false;
+    }
     markers_emitter_t e = { .payload = payload, .ok = true, .rva = rva };
     for (size_t i = 0; i < LABEL_COUNT; ++i)
         e.labels[i] = UINT32_MAX;
@@ -188,33 +196,32 @@ static bool build_markers(payload_t *payload, uint32_t rva, uint32_t next, uint3
      * full-sized retail refEntity_t when submitting the static models.
      */
     uint32_t count = word(&e, 0), model = word(&e, 0);
-    uint32_t jewel = word(&e, 0), valid_origin = word(&e, 0), flags = word(&e, 0);
+    uint32_t jewel = word(&e, 0), valid_origin = word(&e, 0);
     uint32_t origin = emit(&e, NULL, 12), angles = emit(&e, NULL, 12);
-    uint32_t end = emit(&e, NULL, 12), trace = emit(&e, NULL, 56);
-    uint32_t mins = (uint32_t)payload->size;
-    word(&e, 0xc1a00000); word(&e, 0xc1a00000); word(&e, 0xc1700000); /* -20,-20,-15 */
-    uint32_t maxs = (uint32_t)payload->size;
-    word(&e, 0x41a00000); word(&e, 0x41a00000); word(&e, 0x41700000); /* 20,20,15 */
+    uint32_t start = emit(&e, NULL, 12), end = emit(&e, NULL, 12);
+    uint32_t trace = emit(&e, NULL, 56);
+    uint32_t point = emit(&e, NULL, 12); /* zero mins and maxs */
     uint32_t drop = word(&e, 0x45800000); /* 4096.0 */
-    uint32_t offset = (uint32_t)payload->size;
-    const float offsets[] = {
-        VALUABLE_MARKER_OFFSET_X, VALUABLE_MARKER_OFFSET_Y, VALUABLE_MARKER_OFFSET_Z,
-    };
     /* Store the native float representation as little-endian payload data. */
-    for (size_t i = 0; i < ARRAY_SIZE(offsets); ++i) {
+    const float settings[] = {
+        VALUABLE_MARKER_TRACE_LIFT, VALUABLE_MARKER_OFFSET_X,
+        VALUABLE_MARKER_OFFSET_Y, VALUABLE_MARKER_OFFSET_Z,
+    };
+    uint32_t raise = (uint32_t)payload->size, offset = raise + 4;
+    for (size_t i = 0; i < ARRAY_SIZE(settings); ++i) {
         uint32_t bits;
-        memcpy(&bits, &offsets[i], sizeof(bits));
+        memcpy(&bits, &settings[i], sizeof(bits));
         word(&e, bits);
     }
     uint32_t key = emit(&e, NULL, 1024), value = emit(&e, NULL, 1024);
     uint32_t entity = emit(&e, NULL, REF_ENTITY_SIZE);
     uint32_t spots = emit(&e, NULL, MAX_SPOTS * SPOT_SIZE);
-    const char strings[] = "classname\0origin\0angles\0angle\0spawnflags\0item_jewel";
+    const char strings[] = "classname\0origin\0angles\0angle\0item_jewel";
     uint32_t names = emit(&e, strings, sizeof(strings));
     const char model_path[] = VALUABLE_MARKER_MODEL;
     uint32_t marker_model = emit(&e, model_path, sizeof(model_path));
     enum { NAME_CLASS = 0, NAME_ORIGIN = 10, NAME_ANGLES = 17, NAME_ANGLE = 24,
-           NAME_FLAGS = 30, NAME_JEWEL = 41 };
+           NAME_JEWEL = 30 };
     if (!e.ok)
         goto failed;
     put32(payload->data + entity + 4, 64); /* RF_NOSHADOW */
@@ -245,7 +252,6 @@ static bool build_markers(payload_t *payload, uint32_t rva, uint32_t next, uint3
     branch(&e, 0x85, NEXT_ENTITY);
     store(&e, jewel, 0);
     store(&e, valid_origin, 0);
-    store(&e, flags, 0);
     for (unsigned i = 0; i < 3; ++i)
         store(&e, angles + i * 4, 0);
 
@@ -258,7 +264,6 @@ static bool build_markers(payload_t *payload, uint32_t rva, uint32_t next, uint3
     match(&e, key, names + NAME_ORIGIN, ORIGIN);
     match(&e, key, names + NAME_ANGLES, ANGLES);
     match(&e, key, names + NAME_ANGLE, ANGLE);
-    match(&e, key, names + NAME_FLAGS, SPAWNFLAGS);
     jump(&e, NEXT_KEY);
 
     label(&e, CLASSNAME);
@@ -288,37 +293,36 @@ static bool build_markers(payload_t *payload, uint32_t rva, uint32_t next, uint3
     BYTES(&e, 0x83, 0xc4, 4, 0xd9, 0x9b); word(&e, angles + 4); /* fstp yaw */
     jump(&e, NEXT_KEY);
 
-    label(&e, SPAWNFLAGS);
-    address(&e, 0, value);
-    BYTES(&e, 0x50);
-    retail_call(&e, RETAIL_ATOI);
-    BYTES(&e, 0x83, 0xc4, 4);
-    store_eax(&e, flags);
-    jump(&e, NEXT_KEY);
-
     label(&e, SAVE);
     compare(&e, jewel, 0); branch(&e, 0x84, NEXT_ENTITY);
     compare(&e, valid_origin, 0); branch(&e, 0x84, NEXT_ENTITY);
     compare(&e, count, MAX_SPOTS); branch(&e, 0x83, NEXT_ENTITY); /* jae */
-    BYTES(&e, 0xf6, 0x83); word(&e, flags); BYTES(&e, 1); /* suspended item */
-    branch(&e, 0x85, KEEP_ORIGIN);
 
-    /* Match FinishSpawningItem's jewel box and downward world trace. Keep
-     * the map origin when the trace starts inside solid geometry.
+    /* Drop every spot to the floor, including suspended ones: retail moves
+     * jewels between spots and G_DropItemToFloor honors the moved jewel's
+     * own spawnflags, not the spot's. Like FinishSpawningItem, point-trace
+     * the world from above the spawn point to 4096 units below it. Keep the
+     * map origin when the start is inside solid geometry or nothing is hit.
      */
+    copy_vector(&e, origin, start);
     copy_vector(&e, origin, end);
+    BYTES(&e, 0xd9, 0x83); word(&e, origin + 8); /* fld z */
+    BYTES(&e, 0xd8, 0x83); word(&e, raise); /* fadd lift */
+    BYTES(&e, 0xd9, 0x9b); word(&e, start + 8);
     BYTES(&e, 0xd9, 0x83); word(&e, origin + 8); /* fld z */
     BYTES(&e, 0xd8, 0xa3); word(&e, drop); /* fsub 4096 */
     BYTES(&e, 0xd9, 0x9b); word(&e, end + 8);
-    BYTES(&e, 0x68); word(&e, 0x2010801); /* MASK_PLAYERSOLID */
+    BYTES(&e, 0x68); word(&e, MASK_PLAYERSOLID);
     BYTES(&e, 0x6a, 0); /* world collision model */
-    const uint32_t trace_args[] = { maxs, mins, end, origin, trace };
+    const uint32_t trace_args[] = { point, point, end, start, trace };
     for (size_t i = 0; i < ARRAY_SIZE(trace_args); ++i) {
         address(&e, 0, trace_args[i]);
         BYTES(&e, 0x50);
     }
     engine_call(&e, BOX_TRACE, 7);
-    compare(&e, trace + 4, 0); branch(&e, 0x85, KEEP_ORIGIN);
+    compare(&e, trace + 4, 0); branch(&e, 0x85, KEEP_ORIGIN); /* startsolid */
+    /* The fraction is never negative, so its bits order like integers. */
+    compare(&e, trace + 8, FLOAT_ONE); branch(&e, 0x83, KEEP_ORIGIN); /* jae */
     copy_vector(&e, trace + 12, origin);
 
     label(&e, KEEP_ORIGIN);

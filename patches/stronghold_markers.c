@@ -4,15 +4,20 @@
 #include <stdio.h>
 #include <string.h>
 
-/* Edit these settings and rebuild. Offsets are world X/Y/Z map units.
- * Size is a uniform multiplier: 1 is native size, 2 doubles it. The model's
- * bounds center stays at the stronghold origin plus the offsets at any size.
+/* Edit these settings and rebuild. Each marker drops onto the first world
+ * surface a point trace hits straight below its stronghold origin. The trace
+ * starts TRACE_LIFT map units above that origin, so strongholds placed on or
+ * sunk into the terrain still find its surface. Offsets are world X/Y/Z map
+ * units added to the dropped position. Size is a uniform multiplier: 1 is
+ * native size, 2 doubles it. At any size, the model's bounds stay centered
+ * horizontally and their bottom rests on the dropped position plus offsets.
  */
 #define STRONGHOLD_MARKER_MODEL     "models/mapobjects/item_highlight/item_highlight.md3"
 #define STRONGHOLD_MARKER_OFFSET_X  0.0f
 #define STRONGHOLD_MARKER_OFFSET_Y  0.0f
 #define STRONGHOLD_MARKER_OFFSET_Z  0.0f
 #define STRONGHOLD_MARKER_SIZE      1.0f
+#define STRONGHOLD_MARKER_TRACE_LIFT 64.0f
 
 _Static_assert(sizeof(float) == 4 && FLT_RADIX == 2 && FLT_MANT_DIG == 24,
                "Stronghold marker settings require IEEE binary32 floats");
@@ -24,19 +29,21 @@ _Static_assert(sizeof(STRONGHOLD_MARKER_MODEL) > 1,
  * Invalidate on world load, then read the BSP on the first main-world draw.
  * This lets the valuable marker's load handler finish normally. Consuming
  * the tokens through EOF rewinds the shared cursor for other BSP readers.
- * Strongholds retain their map origins, including when ruined or unbuilt.
+ * Strongholds keep their map origins, including when ruined or unbuilt, so
+ * each marker's floor position is traced once along with the BSP parse.
  */
 enum {
     MAX_SPOTS = 3, SPOT_SIZE = 48, REF_ENTITY_SIZE = 0xa68,
     LOAD_WORLD = 36, REGISTER_MODEL = 37, ADD_ENTITY = 41,
-    RENDER_SCENE = 44, MODEL_BOUNDS = 47, GET_TOKEN = 86,
+    BOX_TRACE = 25, RENDER_SCENE = 44, MODEL_BOUNDS = 47, GET_TOKEN = 86,
+    CONTENTS_SOLID = 1, FLOAT_ONE = 0x3f800000,
     RETAIL_ATOF = 0x84dc9, RETAIL_ANGLES_TO_AXIS = 0x3c0d0,
     MAIN_REFDEF = 0xd9e7a0,
 };
 
 enum {
     RESET, DRAW, NEXT_ENTITY, NEXT_KEY, CLASSNAME, ORIGIN, ANGLES, ANGLE,
-    SAVE, READY, DRAW_LOOP, PASS, TOKEN, EQUALS, EQUALS_LOOP, UNEQUAL,
+    SAVE, PLACE, READY, DRAW_LOOP, PASS, TOKEN, EQUALS, EQUALS_LOOP, UNEQUAL,
     VECTOR, VECTOR_NEXT, VECTOR_NUMBER, VECTOR_SKIP, VECTOR_DELIMITER,
     VECTOR_OK, VECTOR_BAD, LABEL_COUNT
 };
@@ -170,8 +177,13 @@ static bool build_markers(payload_t *payload, uint32_t rva,
         STRONGHOLD_MARKER_OFFSET_Z,
     };
     const float size = STRONGHOLD_MARKER_SIZE;
+    const float lift = STRONGHOLD_MARKER_TRACE_LIFT;
     if (!(size > 0 && size <= FLT_MAX)) {
         fputs("Stronghold marker size must be finite and positive\n", stderr);
+        return false;
+    }
+    if (!(lift >= 0 && lift <= FLT_MAX)) {
+        fputs("Stronghold marker trace lift must be finite and non-negative\n", stderr);
         return false;
     }
     for (size_t i = 0; i < ARRAY_SIZE(offsets); ++i) {
@@ -190,7 +202,11 @@ static bool build_markers(payload_t *payload, uint32_t rva,
     uint32_t origin = emit(&e, NULL, 12), axis = emit(&e, NULL, 36);
     uint32_t angles = emit(&e, NULL, 12);
     uint32_t mins = emit(&e, NULL, 12), maxs = emit(&e, NULL, 12);
-    uint32_t center = emit(&e, NULL, 12), half = real(&e, 0.5f);
+    uint32_t anchor = emit(&e, NULL, 12), half = real(&e, 0.5f);
+    uint32_t start = emit(&e, NULL, 12), end = emit(&e, NULL, 12);
+    uint32_t trace = emit(&e, NULL, 56);
+    uint32_t point = emit(&e, NULL, 12); /* zero mins and maxs */
+    uint32_t raise = real(&e, lift), drop = real(&e, 4096.0f);
     uint32_t scale = real(&e, size), offset = (uint32_t)payload->size;
     for (size_t i = 0; i < ARRAY_SIZE(offsets); ++i)
         real(&e, offsets[i]);
@@ -239,12 +255,16 @@ static bool build_markers(payload_t *payload, uint32_t rva,
     address(&e, 2, maxs); BYTES(&e, 0x52);
     address(&e, 2, mins); BYTES(&e, 0x52, 0x50);
     engine_call(&e, MODEL_BOUNDS, 3);
-    for (unsigned i = 0; i < 3; ++i) {
+    /* Anchor the model at its bounds' bottom center, so it rests on the
+     * traced floor instead of sinking half its height into it.
+     */
+    for (unsigned i = 0; i < 2; ++i) {
         BYTES(&e, 0xd9, 0x83, B4(mins + i * 4)); /* fld min */
         BYTES(&e, 0xd8, 0x83, B4(maxs + i * 4)); /* fadd max */
         BYTES(&e, 0xd8, 0x8b, B4(half)); /* fmul 0.5 */
-        BYTES(&e, 0xd9, 0x9b, B4(center + i * 4)); /* fstp center */
+        BYTES(&e, 0xd9, 0x9b, B4(anchor + i * 4)); /* fstp anchor */
     }
+    BYTES(&e, 0x8b, 0x83, B4(mins + 8), 0x89, 0x83, B4(anchor + 8)); /* bottom */
 
     label(&e, NEXT_ENTITY);
     token(&e, key, READY);
@@ -298,6 +318,34 @@ static bool build_markers(payload_t *payload, uint32_t rva,
     compare(&e, valid_origin, 0); branch(&e, 0x84, NEXT_ENTITY);
     /* Retail SP_ig_info_stronghold also keeps only the first three. */
     compare(&e, count, MAX_SPOTS); branch(&e, 0x83, NEXT_ENTITY);
+    /* Point-trace the visible world geometry from above the stronghold
+     * origin to 4096 units below it, ignoring player clips. Keep the map
+     * origin when the start is inside solid geometry or nothing is hit.
+     */
+    for (unsigned i = 0; i < 3; ++i) {
+        BYTES(&e, 0x8b, 0x83, B4(origin + i * 4)); /* eax=origin component */
+        BYTES(&e, 0x89, 0x83, B4(start + i * 4), 0x89, 0x83, B4(end + i * 4));
+    }
+    BYTES(&e, 0xd9, 0x83, B4(origin + 8), 0xd8, 0x83, B4(raise)); /* z+lift */
+    BYTES(&e, 0xd9, 0x9b, B4(start + 8));
+    BYTES(&e, 0xd9, 0x83, B4(origin + 8), 0xd8, 0xa3, B4(drop)); /* z-4096 */
+    BYTES(&e, 0xd9, 0x9b, B4(end + 8));
+    BYTES(&e, 0x6a, CONTENTS_SOLID, 0x6a, 0); /* brush mask; world model */
+    const uint32_t trace_args[] = { point, point, end, start, trace };
+    for (size_t i = 0; i < ARRAY_SIZE(trace_args); ++i) {
+        address(&e, 0, trace_args[i]);
+        BYTES(&e, 0x50);
+    }
+    engine_call(&e, BOX_TRACE, 7);
+    compare(&e, trace + 4, 0); branch(&e, 0x85, PLACE); /* startsolid */
+    /* The fraction is never negative, so its bits order like integers. */
+    compare(&e, trace + 8, FLOAT_ONE); branch(&e, 0x83, PLACE); /* jae */
+    for (unsigned i = 0; i < 3; ++i) {
+        BYTES(&e, 0x8b, 0x83, B4(trace + 12 + i * 4)); /* eax=endpos */
+        BYTES(&e, 0x89, 0x83, B4(origin + i * 4));
+    }
+
+    label(&e, PLACE);
     address(&e, 0, axis);
     address(&e, 6, angles);
     retail_call(&e, rva, RETAIL_ANGLES_TO_AXIS);
@@ -306,14 +354,14 @@ static bool build_markers(payload_t *payload, uint32_t rva,
         BYTES(&e, 0xd8, 0x8b, B4(scale)); /* fmul size */
         BYTES(&e, 0xd9, 0x9b, B4(axis + i * 4));
     }
-    /* Subtract the rotated, scaled bounds center from the target position.
-     * Scaling then changes the extent without moving the marker's center.
+    /* Subtract the rotated, scaled bounds anchor from the target position.
+     * Scaling then changes the extent without moving the marker's anchor.
      */
     for (unsigned i = 0; i < 3; ++i) {
         BYTES(&e, 0xd9, 0x83, B4(origin + i * 4));
         BYTES(&e, 0xd8, 0x83, B4(offset + i * 4));
         for (unsigned j = 0; j < 3; ++j) {
-            BYTES(&e, 0xd9, 0x83, B4(center + j * 4));
+            BYTES(&e, 0xd9, 0x83, B4(anchor + j * 4));
             BYTES(&e, 0xd8, 0x8b, B4(axis + (j * 3 + i) * 4));
             BYTES(&e, 0xde, 0xe9); /* fsubp st(1),st */
         }
