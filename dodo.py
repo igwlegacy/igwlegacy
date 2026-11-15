@@ -17,6 +17,8 @@ INPUT_BINARIES = [
     for name in ("gamex86.dll", "cgamex86.dll", "uix86.dll", "igwarlord.exe")
 ]
 DIST = ROOT / "dist"
+# The game loads PK3s from its base game directory, like the DLLs.
+DIST_PK3 = DIST / "base" / "igwlegacy.pk3"
 ASSET_BUILD = ROOT / "build" / "assets"
 # Use None for the size to convert formats while preserving source dimensions.
 TEXTURE_RULES = {
@@ -143,7 +145,9 @@ def _assemble_dist():
     with tempfile.TemporaryDirectory(prefix=".dist-", dir=ROOT) as directory:
         staging = Path(directory) / "dist"
         staging.mkdir()
-        _package_gamedir(staging / "igwlegacy.pk3")
+        pk3 = staging / DIST_PK3.relative_to(DIST)
+        pk3.parent.mkdir(parents=True)
+        _package_gamedir(pk3)
         subprocess.run(
             [str(PATCHER), "--output-dir", str(staging), *map(str, INPUT_BINARIES)],
             check=True,
@@ -201,14 +205,14 @@ def task_models():
 def task_dist():
     """Package gamedir as igwlegacy.pk3 and add patched binaries in dist/.
 
-    The patched DLLs go to dist/base/, the executable to dist/.
+    The PK3 and the patched DLLs go to dist/base/, the executable to dist/.
     """
     return {
         "actions": [_assemble_dist],
         "task_dep": ["monkey_patcher", "textures", "models"],
         "file_dep": list(map(str, INPUT_BINARIES))
         + [str(ASSET_BUILD / name) for name in GENERATED_ASSETS],
-        "targets": [str(DIST / "igwlegacy.pk3")]
+        "targets": [str(DIST_PK3)]
         + [str(DIST / _dist_path(path)) for path in INPUT_BINARIES],
         "uptodate": [False],
     }
