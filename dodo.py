@@ -17,6 +17,8 @@ INPUT_BINARIES = [
     for name in ("gamex86.dll", "cgamex86.dll", "uix86.dll", "igwarlord.exe")
 ]
 DIST = ROOT / "dist"
+# Name of the patched igwarlord.exe in dist/.
+DIST_EXE_NAME = "igwlegacy.exe"
 # The game loads PK3s from its base game directory, like the DLLs.
 DIST_PK3 = DIST / "base" / "zzzigwlegacy.pk3"
 ASSET_BUILD = ROOT / "build" / "assets"
@@ -139,10 +141,11 @@ def _package_gamedir(output):
 def _dist_path(binary):
     """Return where a patched binary goes below dist/."""
     # The DLLs belong in the base game directory, the executable stays at
-    # the top of the distribution.
+    # the top of the distribution under the IGWL name so it is not mistaken
+    # for the unpatched original.
     if binary.suffix.lower() == ".dll":
         return Path("base", binary.name)
-    return Path(binary.name)
+    return Path(DIST_EXE_NAME)
 
 
 def _assemble_dist():
@@ -214,7 +217,8 @@ def task_models():
 def task_dist():
     """Package gamedir as igwlegacy.pk3 and add patched binaries in dist/.
 
-    The PK3 and the patched DLLs go to dist/base/, the executable to dist/.
+    The PK3 and the patched DLLs go to dist/base/, the executable to
+    dist/igwlegacy.exe.
     """
     gamedir = _gamedir_sources()
     return {

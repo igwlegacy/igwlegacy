@@ -14,8 +14,9 @@ git submodule update --init
 pixi run build
 ```
 
-The output in `./dist/` mirrors an IGW installation: `igwarlord.exe` at the
-top and `base/` with `gamex86.dll`, `cgamex86.dll`, `uix86.dll`, and
+The output in `./dist/` mirrors an IGW installation: the patched
+`igwarlord.exe` as `igwlegacy.exe` at the top and `base/` with
+`gamex86.dll`, `cgamex86.dll`, `uix86.dll`, and
 `igwlegacy.pk3`, a plain ZIP archive of the contents of `./gamedir/`
 plus the assets generated from `./raw-assets/`: textures converted with
 `idt3tc` and Blender models exported as static MD3s by
