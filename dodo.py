@@ -65,7 +65,10 @@ def _build_patcher():
     # Meson and Ninja track source changes and avoid unnecessary compilation.
     if not (PATCHER_BUILD / "meson-private" / "coredata.dat").is_file():
         subprocess.run(["meson", "setup", str(PATCHER_BUILD), str(ROOT)], check=True)
-    subprocess.run(["meson", "compile", "-C", str(PATCHER_BUILD)], check=True)
+    # Call Ninja directly: "meson compile" only wraps it but costs a Python
+    # interpreter start on every build. Ninja still regenerates the build
+    # files itself when a meson.build changes.
+    subprocess.run(["ninja", "-C", str(PATCHER_BUILD)], check=True)
 
 
 def _convert_texture(source, size, output):
@@ -100,12 +103,17 @@ def _convert_model(source, output):
     )
 
 
-def _package_gamedir(output):
-    """Combine gamedir and generated assets in a reproducible PK3."""
+def _gamedir_sources():
+    """Map PK3 entry names to their files and directories below gamedir."""
     gamedir = ROOT / "gamedir"
-    sources = {
+    return {
         source.relative_to(gamedir).as_posix(): source for source in gamedir.rglob("*")
     }
+
+
+def _package_gamedir(output):
+    """Combine gamedir and generated assets in a reproducible PK3."""
+    sources = _gamedir_sources()
     # Replace existing asset entries rather than writing duplicate ZIP names.
     sources.update({name: ASSET_BUILD / name for name in GENERATED_ASSETS})
     with zipfile.ZipFile(output, "w") as archive:
@@ -205,12 +213,20 @@ def task_dist():
 
     The PK3 and the patched DLLs go to dist/base/, the executable to dist/.
     """
+    gamedir = _gamedir_sources()
     return {
         "actions": [_assemble_dist],
         "task_dep": ["monkey_patcher", "textures", "models"],
-        "file_dep": list(map(str, INPUT_BINARIES))
-        + [str(ASSET_BUILD / name) for name in GENERATED_ASSETS],
+        # Every input of the distribution is a dependency, so a build without
+        # changes skips repackaging. dodo.py covers the packaging code and
+        # rules, the patcher binary covers changes to the patches.
+        "file_dep": [str(ROOT / "dodo.py"), str(PATCHER)]
+        + list(map(str, INPUT_BINARIES))
+        + [str(ASSET_BUILD / name) for name in GENERATED_ASSETS]
+        + [str(path) for path in gamedir.values() if path.is_file()],
         "targets": [str(DIST_PK3)]
         + [str(DIST / _dist_path(path)) for path in INPUT_BINARIES],
-        "uptodate": [False],
+        # File dependencies alone miss removed files and empty directories,
+        # which also change the PK3, so track the entry names as well.
+        "uptodate": [config_changed({"gamedir": sorted(gamedir)})],
     }
