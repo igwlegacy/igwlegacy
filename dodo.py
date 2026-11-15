@@ -58,6 +58,18 @@ TEXTURE_RULES = {
         "highlight_stronghold.png",
         "512x512",
     ),
+    "models/mapobjects/item_highlight/item_highlight_dynamite.dds": (
+        "highlight_dynamite.png",
+        "512x512",
+    ),
+    "models/mapobjects/item_highlight/item_highlight_rocket.dds": (
+        "highlight_rocket.png",
+        "512x512",
+    ),
+    "models/mapobjects/item_highlight/item_highlight_radio.dds": (
+        "highlight_radio.png",
+        "512x512",
+    ),
 }
 
 # Blender sources below raw-assets/ exported as static MD3s, with the shader
@@ -76,6 +88,17 @@ MODEL_RULES = {
     "models/mapobjects/item_highlight/item_highlight_stronghold.md3": (
         "models/item_highlight_square.blend",
         "models/mapobjects/item_highlight/item_highlight_stronghold",
+    ),    "models/mapobjects/item_highlight/item_highlight_dynamite.md3": (
+        "models/item_highlight_round.blend",
+        "models/mapobjects/item_highlight/item_highlight_dynamite",
+    ),
+    "models/mapobjects/item_highlight/item_highlight_rocket.md3": (
+        "models/item_highlight_round.blend",
+        "models/mapobjects/item_highlight/item_highlight_rocket",
+    ),
+    "models/mapobjects/item_highlight/item_highlight_radio.md3": (
+        "models/item_highlight_round.blend",
+        "models/mapobjects/item_highlight/item_highlight_radio",
     ),
 }
 MD3_EXPORTER = ROOT / "model-converter" / "export_md3.py"
