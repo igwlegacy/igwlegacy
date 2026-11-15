@@ -12,6 +12,7 @@ patch_sources = files(
 	'main_menu_github.c',
 	'valuable_markers.c',
 	'skip_intro.c',
+	'use_shaders.c',
 )
 
 patch_include_dirs = include_directories('.')

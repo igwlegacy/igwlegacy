@@ -11,6 +11,7 @@ Each functionality has a separate file in `patches/` at the repository root:
 | [bob_up.c](../../patches/bob_up.c) | Walking eye-height bob |
 | [fog.c](../../patches/fog.c) | Engine fog defaults: `r_forceFog 1`, `r_forceFogDensity 0` |
 | [skip_intro.c](../../patches/skip_intro.c) | Intro video at startup |
+| [use_shaders.c](../../patches/use_shaders.c) | Engine `r_useShaders` forced to `1` |
 | [screen_shake.c](../../patches/screen_shake.c) | Explosion and death shake |
 | [damage_kick.c](../../patches/damage_kick.c) | Damage pitch and roll, including the return phase |
 | [landing_dip.c](../../patches/landing_dip.c) | Eye-height dip on landing |
@@ -34,6 +35,7 @@ Edit the rule definitions in the corresponding file and rebuild. Each file regis
 | Respawn countdown                       | Round remaining seconds up and expire the final message at the respawn deadline |
 | Main-menu promotion                     | Omit the panel's menu items, ticker, and update request                    |
 | Intro video                             | Never queue the startup `cinematic` command; the command remains available |
+| `r_useShaders`                          | Force `1` at renderer registration and at every renderer read |
 
 Weapon model sway retains its original behavior. The shotgun patch provides matching server and client recoil settings, initially set to their stock values.
 
@@ -129,7 +131,11 @@ Only the retail files are accepted:
 | `uix86.dll`    | 499712 | `0x4fbdcaee` | `90ab043eb8299c5852594a92bc5e6f958b97f6af55d9d0bcbbe8b81584f43dae` |
 | `igwarlord.exe` | 2414080 | `0x4fbeadb4` | `15dd413911fdfb26ccc9c0ec5cd2704e78cbb6a8622de7fe18eda398c16c55b7` |
 
-The executable uses instruction patches in [fog.c](../../patches/fog.c) to replace only the default-string pointers passed during renderer CVAR registration. `r_forcefog` (CVAR names are case insensitive) defaults to `1`, and `r_forceFogDensity` defaults to `0` instead of `0.0003`. The original flags, shared string literals, and relocation slots are preserved. Existing settings and subsequent CVAR changes retain the engine's normal behavior. No syscall payload is added to the executable.
+The executable uses instruction patches in [fog.c](../../patches/fog.c) to replace only the default-string pointers passed during renderer CVAR registration. `r_forcefog` (CVAR names are case insensitive) defaults to `1`, and `r_forceFogDensity` defaults to `0` instead of `0.0003`. The original flags, shared string literals, and relocation slots are preserved. Existing settings and subsequent CVAR changes retain the engine's normal behavior.
+
+[use_shaders.c](../../patches/use_shaders.c) forces `r_useShaders` to `1`. Its renderer registration calls the engine's `Cvar_Set` through the adjacent refimport slot instead of `Cvar_Get`, which overwrites saved or user-created values with `1` on every renderer start, including `vid_restart`, and still returns the CVAR pointer. All eight renderer reads of its integer field behave as if it were `1`, so later console or UI changes have no effect. The CVAR is no longer registered with `CVAR_ARCHIVE`, although an archived value from the config keeps that flag and is saved as `1`. The patched `cgamex86.dll` also ignores `r_useShaders` when deciding whether to draw `r_bloom`, so bloom depends on `r_bloom` alone.
+
+No syscall payload is added to the executable.
 
 The program checks file size and a whole-file FNV-1a 64-bit fingerprint, then verifies PE32/i386 headers and instruction guards. The SHA-256 values above are provided for independent identification. The fingerprint guards against accidental version differences, not malicious collisions. Supporting another release requires verifying its layout and patch sites and adding a profile in `src/pe.c`.
 
