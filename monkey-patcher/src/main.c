@@ -1,10 +1,15 @@
+/* open() and fdopen() are POSIX, hidden by strict -std=c17. */
+#define _POSIX_C_SOURCE 200809L
+
 #include "patcher.h"
 
 #include <ctype.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 typedef struct {
     const char *input;
@@ -148,15 +153,24 @@ int main(int argc, char **argv)
     if (!dry_run) {
         /* Create each name exclusively, removing newly created outputs if a
          * later one fails. This also protects originals reached through
-         * aliases, hard links or symbolic links.
+         * aliases, hard links or symbolic links. Outputs inherit the input
+         * permissions (still subject to the umask, like cp), so executable
+         * inputs stay executable.
          */
         for (size_t i = 0; i < count; ++i) {
-            FILE *out = fopen(jobs[i].output, "wbx");
-            if (!out) {
+            int fd = open(jobs[i].output, O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC,
+                          (mode_t)jobs[i].image.mode);
+            if (fd < 0) {
                 fprintf(stderr, "%s: %s\n", jobs[i].output, strerror(errno));
                 goto done;
             }
             jobs[i].created = true;
+            FILE *out = fdopen(fd, "wb");
+            if (!out) {
+                fprintf(stderr, "%s: %s\n", jobs[i].output, strerror(errno));
+                close(fd);
+                goto done;
+            }
             bool ok = fwrite(jobs[i].image.data, 1, jobs[i].image.size, out) == jobs[i].image.size;
             if (fclose(out) != 0)
                 ok = false;

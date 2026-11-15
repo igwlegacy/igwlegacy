@@ -44,6 +44,8 @@ typedef struct {
     size_t size, pe, optional, sections;
     uint16_t section_count;
     const profile_t *profile;
+    /* Permission bits of the input, reused for its patched output. */
+    unsigned int mode;
 } image_t;
 
 typedef struct {

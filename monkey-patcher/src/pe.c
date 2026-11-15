@@ -1,3 +1,6 @@
+/* fileno() and fstat() are POSIX, hidden by strict -std=c17. */
+#define _POSIX_C_SOURCE 200809L
+
 #include "patcher.h"
 
 #include <errno.h>
@@ -5,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 
 /* Retail files used by reigw. Fingerprints cover every byte, so an already
  * patched file or a different release cannot accidentally match this layout.
@@ -82,6 +86,14 @@ bool image_open(image_t *image, const char *path)
     }
     long length = -1;
     bool ok = false;
+    /* Query the open stream so the mode belongs to the bytes being read. */
+    struct stat info;
+    if (fstat(fileno(file), &info) != 0) {
+        fprintf(stderr, "%s: %s\n", path, strerror(errno));
+        goto done;
+    }
+    /* Drop setuid/setgid/sticky bits, only plain permissions carry over. */
+    image->mode = (unsigned int)(info.st_mode & 0777);
     if (fseek(file, 0, SEEK_END) == 0)
         length = ftell(file);
     /* Supported inputs are below 4 MiB. Bound allocation before parsing. */
