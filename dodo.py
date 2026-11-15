@@ -18,7 +18,7 @@ INPUT_BINARIES = [
 ]
 DIST = ROOT / "dist"
 # The game loads PK3s from its base game directory, like the DLLs.
-DIST_PK3 = DIST / "base" / "igwlegacy.pk3"
+DIST_PK3 = DIST / "base" / "zzzigwlegacy.pk3"
 ASSET_BUILD = ROOT / "build" / "assets"
 # Use None for the size to convert formats while preserving source dimensions.
 TEXTURE_RULES = {
