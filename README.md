@@ -21,7 +21,7 @@ plus the assets generated from `./raw-assets/`: textures converted with
 `idt3tc` and Blender models exported as static MD3s by
 [`model-converter/export_md3.py`](model-converter/export_md3.py). The
 `TEXTURE_RULES` and `MODEL_RULES` in `dodo.py` map game paths to their sources.
-All four binaries pass through the monkey patcher. The executable defaults `r_forceFog` to `1` and `r_forceFogDensity` to `0`; existing settings still take precedence. The UI patch removes the
+All four binaries pass through the monkey patcher. The executable defaults `r_forceFog` to `1` and `r_forceFogDensity` to `0`; existing settings still take precedence. It also skips the intro video at startup. The UI patch removes the
 main-menu promotional panel and its update request.
 Archive paths start directly with `scripts/`, `sound/`, etc. Sorted entries,
 fixed timestamps and permissions, and a fixed compression level make the

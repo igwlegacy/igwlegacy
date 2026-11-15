@@ -11,6 +11,7 @@ patch_sources = files(
 	'main_menu_ad.c',
 	'main_menu_github.c',
 	'valuable_markers.c',
+	'skip_intro.c',
 )
 
 patch_include_dirs = include_directories('.')

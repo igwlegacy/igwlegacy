@@ -10,6 +10,7 @@ Each functionality has a separate file in `patches/` at the repository root:
 | [bob_roll.c](../../patches/bob_roll.c) | Walking roll bob |
 | [bob_up.c](../../patches/bob_up.c) | Walking eye-height bob |
 | [fog.c](../../patches/fog.c) | Engine fog defaults: `r_forceFog 1`, `r_forceFogDensity 0` |
+| [skip_intro.c](../../patches/skip_intro.c) | Intro video at startup |
 | [screen_shake.c](../../patches/screen_shake.c) | Explosion and death shake |
 | [damage_kick.c](../../patches/damage_kick.c) | Damage pitch and roll, including the return phase |
 | [landing_dip.c](../../patches/landing_dip.c) | Eye-height dip on landing |
@@ -32,6 +33,7 @@ Edit the rule definitions in the corresponding file and rebuild. Each file regis
 | Death camera                            | Enter spectator movement immediately; omit the slow rise and spectator lift |
 | Respawn countdown                       | Round remaining seconds up and expire the final message at the respawn deadline |
 | Main-menu promotion                     | Omit the panel's menu items, ticker, and update request                    |
+| Intro video                             | Never queue the startup `cinematic` command; the command remains available |
 
 Weapon model sway retains its original behavior. The shotgun patch provides matching server and client recoil settings, initially set to their stock values.
 
