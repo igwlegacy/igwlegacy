@@ -40,10 +40,10 @@ TEXTURE_RULES = {
     # "textures/ui/button/button-4.dds": ("button4.png", "512x128"),
     "textures/ui/loading/progressbar-green.dds": ("blood.png", None),
     # The shader references the .tga, so ship it alongside the .dds.
-    "models/mapobjects/item_highlight/item_highlight.tga": (
-        "models/item_highlight.png",
-        None,
-    ),
+    # "models/mapobjects/item_highlight/item_highlight.tga": (
+    #     "models/item_highlight.png",
+    #     None,
+    # ),
     "models/mapobjects/item_highlight/item_highlight.dds": (
         "models/item_highlight.png",
         None,
@@ -64,9 +64,7 @@ DOIT_CONFIG = {"default_tasks": ["dist"]}
 def _build_patcher():
     # Meson and Ninja track source changes and avoid unnecessary compilation.
     if not (PATCHER_BUILD / "meson-private" / "coredata.dat").is_file():
-        subprocess.run(
-            ["meson", "setup", str(PATCHER_BUILD), str(ROOT)], check=True
-        )
+        subprocess.run(["meson", "setup", str(PATCHER_BUILD), str(ROOT)], check=True)
     subprocess.run(["meson", "compile", "-C", str(PATCHER_BUILD)], check=True)
 
 

@@ -13,7 +13,7 @@ models/mapobjects/item_highlight/item_highlight
 	sort additive
 	{
 		// Clamp so the transparent border never wraps onto the opposite edge.
-		clampmap models/mapobjects/item_highlight/item_highlight.tga
+		clampmap models/mapobjects/item_highlight/item_highlight.dds
 		// Additive light weighted by the texture alpha, unaffected by lighting.
 		blendFunc GL_SRC_ALPHA GL_ONE
 		rgbGen identity
