@@ -50,6 +50,10 @@ TEXTURE_RULES = {
         "models/item_highlight.png",
         None,
     ),
+    "models/mapobjects/item_highlight/item_highlight_power.dds": (
+        "highlight_power.png",
+        "512x512",
+    ),
 }
 
 # Blender sources below raw-assets/ exported as static MD3s, with the shader
@@ -60,6 +64,10 @@ MODEL_RULES = {
     "models/mapobjects/item_highlight/item_highlight.md3": (
         "models/item_highlight_round.blend",
         "models/mapobjects/item_highlight/item_highlight",
+    ),
+    "models/mapobjects/item_highlight/item_highlight_power.md3": (
+        "models/item_highlight_round.blend",
+        "models/mapobjects/item_highlight/item_highlight_power",
     ),
 }
 MD3_EXPORTER = ROOT / "model-converter" / "export_md3.py"
