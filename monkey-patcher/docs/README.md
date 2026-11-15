@@ -23,6 +23,7 @@ Each functionality has a separate file in `patches/` at the repository root:
 | [spawn_protection.c](../../patches/spawn_protection.c) | Spawn protection time, forced to 2000 ms |
 | [team_repair.c](../../patches/team_repair.c) | Toolkit refills a teammate's current clip for money |
 | [main_menu_ad.c](../../patches/main_menu_ad.c) | Main-menu promotional panel, ticker, and update request |
+| [autoplay.c](../../patches/autoplay.c) | Automatically enter the game once loading finishes, without clicking `PLAY!` |
 | [valuable_markers.c](../../patches/valuable_markers.c) | Persistent models at every valuable spawn position |
 | [rts_buildable.c](../../patches/rts_buildable.c) | Translucent green overlay on buildable terrain in RTS mode |
 
@@ -40,6 +41,7 @@ Edit the rule definitions in the corresponding file and rebuild. Each file regis
 | `sk_immortal_time`                      | Force `SPAWN_PROTECTION_MS` (`"2000"`)                                     |
 | Main-menu promotion                     | Omit the panel's menu items, ticker, and update request                    |
 | Intro video                             | Never queue the startup `cinematic` command; the command remains available |
+| Loading completion                      | Run the existing `PLAY!` handler when `cg_pbloading` reaches `9` |
 | `r_useShaders`                          | Force `1` at renderer registration and at every renderer read |
 | `r_heathazedistort`                     | Force `0` at renderer registration and at its renderer read |
 

@@ -11,6 +11,7 @@ patch_sources = files(
 	'main_menu_ad.c',
 	'main_menu_github.c',
 	'loading_background.c',
+	'autoplay.c',
 	'valuable_markers.c',
 	'stronghold_markers.c',
 	'skip_intro.c',
