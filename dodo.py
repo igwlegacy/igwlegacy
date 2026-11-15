@@ -18,6 +18,7 @@ INPUT_BINARIES = [
 ]
 DIST = ROOT / "dist"
 ASSET_BUILD = ROOT / "build" / "assets"
+# Use None for the size to convert formats while preserving source dimensions.
 TEXTURE_RULES = {
     "textures/ui/mmbg1.dds": ("wallpaper.png", "2048x2048"),
     "textures/ui/mmbg1ws.dds": ("wallpaper.png", "2048x2048"),
@@ -34,11 +35,11 @@ TEXTURE_RULES = {
     # The shader references the .tga, so ship it alongside the .dds.
     "models/mapobjects/item_highlight/item_highlight.tga": (
         "models/item_highlight.png",
-        "256x256",
+        None,
     ),
     "models/mapobjects/item_highlight/item_highlight.dds": (
         "models/item_highlight.png",
-        "256x256",
+        None,
     ),
 }
 
@@ -57,10 +58,11 @@ def _build_patcher():
 def _convert_texture(source, size, output):
     # Generated textures stay outside gamedir, which remains a source tree.
     output.parent.mkdir(parents=True, exist_ok=True)
-    subprocess.run(
-        ["idt3tc", "img", str(source), "--resize", size, "--save", str(output)],
-        check=True,
-    )
+    command = ["idt3tc", "img", str(source)]
+    if size is not None:
+        command.extend(["--resize", size])
+    command.extend(["--save", str(output)])
+    subprocess.run(command, check=True)
 
 
 def _package_gamedir(output):
@@ -117,7 +119,7 @@ def task_monkey_patcher():
 
 
 def task_textures():
-    """Convert raw PNG assets into the DDS textures used by the game."""
+    """Convert raw PNG assets into the DDS or TGA textures used by the game."""
     for name, (filename, size) in TEXTURE_RULES.items():
         source = ROOT / "raw-assets" / filename
         output = ASSET_BUILD / name
