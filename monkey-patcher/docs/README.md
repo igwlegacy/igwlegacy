@@ -25,6 +25,7 @@ Each functionality has a separate file in `patches/` at the repository root:
 | [main_menu_ad.c](../../patches/main_menu_ad.c) | Main-menu promotional panel, ticker, and update request |
 | [autoplay.c](../../patches/autoplay.c) | Automatically enter the game once loading finishes, without clicking `PLAY!` |
 | [valuable_markers.c](../../patches/valuable_markers.c) | Persistent models at every valuable spawn position |
+| [pickup_markers.c](../../patches/pickup_markers.c) | Persistent models at every dynamite, rocket launcher and radio spawn position |
 | [rts_buildable.c](../../patches/rts_buildable.c) | Translucent green overlay on buildable terrain in RTS mode |
 
 Edit the rule definitions in the corresponding file and rebuild. Each file registers its own rules with `REGISTER_CVAR_RULE`, `REGISTER_CODE_RULE`, their plural forms for arrays, or `REGISTER_PAYLOAD_FEATURE`. Comment out a registration to omit those rules. For a new functionality, add its `.c` file to `patches/meson.build` and register its rules in that file; no declarations or patch lists need updating in shared C files. `src/rules.c` collects and validates the registered rules, sorting by registration name for a deterministic payload layout while preserving the order within each array. One functionality can supply several rules.
@@ -108,6 +109,16 @@ Set `VALUABLE_MARKER_MODEL` and `VALUABLE_MARKER_OFFSET_X`, `_Y`, and `_Z` at th
 `valuable_markers.c` reads and caches up to 1024 positions after the renderer loads the world. It consumes the BSP entity stream through EOF, which rewinds the token cursor for the client's original skybox parser. Unsuspended positions use a downward world collision trace with the valuable item's bounds; suspended positions retain their map origin. Map angles determine each model's orientation.
 
 Models are added only when rendering the main world's `cg.refdef`. HUD model scenes, the map render target, and hyperspace scenes are excluded. The cache is rebuilt on each world load, including renderer restarts. To omit this feature, comment out `REGISTER_PAYLOAD_FEATURE(valuable_markers)` and rebuild.
+
+### Dynamite, rocket launcher and radio spawn models
+
+The patched `cgamex86.dll` displays a round highlight model at every position where the server can place a dynamite, rocket launcher or radio pickup, whether or not the pickup is currently there: `item_highlight_dynamite.md3`, `item_highlight_rocket.md3` and `item_highlight_radio.md3` under `models/mapobjects/item_highlight/`, built from `raw-assets/highlight_*.png` into `zzzigwlegacy.pk3`. These are visual models only; pickups and their placement retain the server's behavior.
+
+Dynamite positions are the map's `weapon_dynamite` entities. Rocket launcher and radio positions exist only in the wave script `scripts/waves/<map>-<e|m|h|b|g>.xml`, as `<rocketspot>` and `<radiospot>` elements. The client selects the script as the server's `G_InitGame` does: medium in survival (gametype 4), easy in teamkill (5), otherwise the one for `sv_difficulty`. Like retail, it keeps at most 10 spots of each kind, reads `<x>`, `<y>`, `<z>` and `<yaw>` with `atoi`, raises `z` by 2 and skips XML comments. The server spawns nothing on these spots in free for all (gametype 0) or without the Scorched Earth expansion (`sv_expansion`), so no rocket launcher or radio models are shown there either. `g_gametype`, `sv_difficulty`, `sv_expansion` and `mapname` are serverinfo keys, so the same applies to clients of remote servers.
+
+Every position drops to the first surface a point trace hits within 4096 units below it, as items do; the trace starts `PICKUP_MARKER_TRACE_LIFT` units above the position. Set the model paths, `PICKUP_MARKER_OFFSET_X`, `_Y` and `_Z`, `PICKUP_MARKER_SIZE` and the trace lift at the top of `patches/pickup_markers.c`, then rebuild.
+
+The positions are read and cached on the first main-world render after each world load, consuming the BSP entity stream through EOF like `valuable_markers.c`. Wave scripts are read up to 32 KiB. The feature name must sort before `valuable_markers`, because that feature does not pass world loads on to later features. To omit this feature, comment out `REGISTER_PAYLOAD_FEATURE(pickup_markers)` and rebuild.
 
 ### RTS buildable terrain
 

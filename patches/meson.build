@@ -14,6 +14,7 @@ patch_sources = files(
 	'autoplay.c',
 	'valuable_markers.c',
 	'stronghold_markers.c',
+	'pickup_markers.c',
 	'skip_intro.c',
 	'use_shaders.c',
 	'heat_haze.c',
