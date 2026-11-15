@@ -21,7 +21,9 @@ models/mapobjects/item_highlight/item_highlight
 		blendFunc GL_SRC_ALPHA GL_ONE
 		rgbGen identity
 		// Gentle pulse between 70% and 100% intensity, one cycle per 2 s.
-		alphaGen wave sin 0.85 0.15 0 0.5
+		// alphaGen wave sin 0.85 0.15 0 0.5
+        // alphaGen wave sin 0.3 0.05 0 0.5
+        alphaGen wave sin 0.65 0.15 0 0.5
 	}
 }
 
@@ -43,7 +45,9 @@ models/mapobjects/item_highlight/item_highlight_power
 		blendFunc GL_SRC_ALPHA GL_ONE
 		rgbGen identity
 		// Gentle pulse between 70% and 100% intensity, one cycle per 2 s.
-		alphaGen wave sin 0.85 0.15 0 0.5
+		// alphaGen wave sin 0.85 0.15 0 0.5
+        // alphaGen wave sin 0.3 0.05 0 0.5
+        alphaGen wave sin 0.65 0.15 0 0.5
 	}
 }
 
@@ -65,7 +69,9 @@ models/mapobjects/item_highlight/item_highlight_stronghold
 		blendFunc GL_SRC_ALPHA GL_ONE
 		rgbGen identity
 		// Gentle pulse between 70% and 100% intensity, one cycle per 2 s.
-		alphaGen wave sin 0.85 0.15 0 0.5
+		// alphaGen wave sin 0.85 0.15 0 0.5
+        // alphaGen wave sin 0.3 0.05 0 0.5
+        alphaGen wave sin 0.65 0.15 0 0.5
 	}
 }
 
@@ -87,7 +93,9 @@ models/mapobjects/item_highlight/item_highlight_dynamite
 		blendFunc GL_SRC_ALPHA GL_ONE
 		rgbGen identity
 		// Gentle pulse between 70% and 100% intensity, one cycle per 2 s.
-		alphaGen wave sin 0.85 0.15 0 0.5
+		// alphaGen wave sin 0.85 0.15 0 0.5
+        // alphaGen wave sin 0.3 0.05 0 0.5
+        alphaGen wave sin 0.65 0.15 0 0.5
 	}
 }
 
@@ -109,7 +117,9 @@ models/mapobjects/item_highlight/item_highlight_rocket
 		blendFunc GL_SRC_ALPHA GL_ONE
 		rgbGen identity
 		// Gentle pulse between 70% and 100% intensity, one cycle per 2 s.
-		alphaGen wave sin 0.85 0.15 0 0.5
+		// alphaGen wave sin 0.85 0.15 0 0.5
+        // alphaGen wave sin 0.3 0.05 0 0.5
+        alphaGen wave sin 0.65 0.15 0 0.5
 	}
 }
 
@@ -131,6 +141,8 @@ models/mapobjects/item_highlight/item_highlight_radio
 		blendFunc GL_SRC_ALPHA GL_ONE
 		rgbGen identity
 		// Gentle pulse between 70% and 100% intensity, one cycle per 2 s.
-		alphaGen wave sin 0.85 0.15 0 0.5
+		// alphaGen wave sin 0.85 0.15 0 0.5
+        // alphaGen wave sin 0.3 0.05 0 0.5
+        alphaGen wave sin 0.65 0.15 0 0.5
 	}
 }

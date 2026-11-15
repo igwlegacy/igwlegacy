@@ -15,8 +15,8 @@
 #define STRONGHOLD_MARKER_MODEL     "models/mapobjects/item_highlight/item_highlight_stronghold.md3"
 #define STRONGHOLD_MARKER_OFFSET_X  0.0f
 #define STRONGHOLD_MARKER_OFFSET_Y  0.0f
-#define STRONGHOLD_MARKER_OFFSET_Z  0.0f
-#define STRONGHOLD_MARKER_SIZE      1.0f
+#define STRONGHOLD_MARKER_OFFSET_Z  1.0f
+#define STRONGHOLD_MARKER_SIZE      10.0f
 #define STRONGHOLD_MARKER_TRACE_LIFT 64.0f
 
 _Static_assert(sizeof(float) == 4 && FLT_RADIX == 2 && FLT_MANT_DIG == 24,

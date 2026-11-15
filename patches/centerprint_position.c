@@ -12,7 +12,7 @@
  * Every y is pushed as a sign-extended imm8 (6a xx), so only that byte
  * changes; no operands with relocations are touched.
  */
-#define CENTERPRINT_RAISE 120
+#define CENTERPRINT_RAISE 128
 
 /* The imm8 written by `push imm8`, sign-extended by the CPU. */
 #define CENTERPRINT_Y ((unsigned char)(-CENTERPRINT_RAISE))

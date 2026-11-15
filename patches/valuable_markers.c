@@ -11,10 +11,10 @@
  * use world X/Y/Z map units and fine-tune the dropped position.
  */
 // #define VALUABLE_MARKER_MODEL     "models/props/jewelry01.md3"
-#define VALUABLE_MARKER_MODEL     "models/mapobjects/item_highlight/item_highlight.md3"
+#define VALUABLE_MARKER_MODEL     "models/mapobjects/item_highlight/item_highlight_power.md3"
 #define VALUABLE_MARKER_OFFSET_X  0.0f
 #define VALUABLE_MARKER_OFFSET_Y  0.0f
-#define VALUABLE_MARKER_OFFSET_Z  0.0f
+#define VALUABLE_MARKER_OFFSET_Z  1.5f
 #define VALUABLE_MARKER_TRACE_LIFT 15.0f
 
 _Static_assert(sizeof(float) == 4 && FLT_RADIX == 2 && FLT_MANT_DIG == 24,

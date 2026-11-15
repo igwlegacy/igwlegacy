@@ -13,7 +13,7 @@ patch_sources = files(
 	'main_menu_ad.c',
 	'main_menu_github.c',
 	'loading_background.c',
-	'autoplay.c',
+	# 'autoplay.c',
 	'valuable_markers.c',
 	'stronghold_markers.c',
 	'pickup_markers.c',
@@ -22,7 +22,7 @@ patch_sources = files(
 	'heat_haze.c',
 	'spawn_protection.c',
 	'team_repair.c',
-	'rts_buildable.c',
+	# 'rts_buildable.c',
 )
 
 patch_include_dirs = include_directories('.')
