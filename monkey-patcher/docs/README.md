@@ -12,6 +12,7 @@ Each functionality has a separate file in `patches/` at the repository root:
 | [fog.c](../../patches/fog.c) | Engine fog defaults: `r_forceFog 1`, `r_forceFogDensity 0` |
 | [skip_intro.c](../../patches/skip_intro.c) | Intro video at startup |
 | [use_shaders.c](../../patches/use_shaders.c) | Engine `r_useShaders` forced to `1` |
+| [heat_haze.c](../../patches/heat_haze.c) | Engine `r_heathazedistort` forced to `0` |
 | [screen_shake.c](../../patches/screen_shake.c) | Explosion and death shake |
 | [damage_kick.c](../../patches/damage_kick.c) | Damage pitch and roll, including the return phase |
 | [landing_dip.c](../../patches/landing_dip.c) | Eye-height dip on landing |
@@ -36,6 +37,7 @@ Edit the rule definitions in the corresponding file and rebuild. Each file regis
 | Main-menu promotion                     | Omit the panel's menu items, ticker, and update request                    |
 | Intro video                             | Never queue the startup `cinematic` command; the command remains available |
 | `r_useShaders`                          | Force `1` at renderer registration and at every renderer read |
+| `r_heathazedistort`                     | Force `0` at renderer registration and at its renderer read |
 
 Weapon model sway retains its original behavior. The shotgun patch provides matching server and client recoil settings, initially set to their stock values.
 
@@ -134,6 +136,8 @@ Only the retail files are accepted:
 The executable uses instruction patches in [fog.c](../../patches/fog.c) to replace only the default-string pointers passed during renderer CVAR registration. `r_forcefog` (CVAR names are case insensitive) defaults to `1`, and `r_forceFogDensity` defaults to `0` instead of `0.0003`. The original flags, shared string literals, and relocation slots are preserved. Existing settings and subsequent CVAR changes retain the engine's normal behavior.
 
 [use_shaders.c](../../patches/use_shaders.c) forces `r_useShaders` to `1`. Its renderer registration calls the engine's `Cvar_Set` through the adjacent refimport slot instead of `Cvar_Get`, which overwrites saved or user-created values with `1` on every renderer start, including `vid_restart`, and still returns the CVAR pointer. All eight renderer reads of its integer field behave as if it were `1`, so later console or UI changes have no effect. The CVAR is no longer registered with `CVAR_ARCHIVE`, although an archived value from the config keeps that flag and is saved as `1`. The patched `cgamex86.dll` also ignores `r_useShaders` when deciding whether to draw `r_bloom`, so bloom depends on `r_bloom` alone.
+
+[heat_haze.c](../../patches/heat_haze.c) forces `r_heathazedistort` to `0` the same way: its registration passes the existing `"0"` literal instead of `"0.01"` to `Cvar_Set`, and its only renderer read loads `0.0` instead of the CVAR value, which removes the heat-haze distortion.
 
 No syscall payload is added to the executable.
 

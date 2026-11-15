@@ -13,6 +13,7 @@ patch_sources = files(
 	'valuable_markers.c',
 	'skip_intro.c',
 	'use_shaders.c',
+	'heat_haze.c',
 )
 
 patch_include_dirs = include_directories('.')
