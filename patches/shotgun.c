@@ -12,8 +12,8 @@
  * Primary pellets receive the distance multiplier below on the server.
  */
 /* #define SHOTGUN_PELLETS               11 */ /*OG*/
-#define SHOTGUN_PELLETS               30
-#define SHOTGUN_PRIMARY_FIRE_INTERVAL_MS    1200
+#define SHOTGUN_PELLETS               25
+#define SHOTGUN_PRIMARY_FIRE_INTERVAL_MS    800
 /* #define SHOTGUN_SECONDARY_FIRE_INTERVAL_MS  600 */ /*OG*/
 #define SHOTGUN_SECONDARY_FIRE_INTERVAL_MS  600
 #define SHOTGUN_SHELLS_PER_RELOAD     2
@@ -39,7 +39,7 @@ static const float shotgun_kick_yaw = 0.05f;
  * Like retail knockback, it then suspends ground friction for
  * SHOTGUN_PUSH_KNOCKBACK_MS unless another movement timer is running.
  */
-static const float shotgun_push_velocity = 300.0f;
+static const float shotgun_push_velocity = 500.0f;
 #define SHOTGUN_PUSH_KNOCKBACK_MS     200
 
 /* The server initializes its pellet loop with lea esi,[ebx+imm8], EBX=0.

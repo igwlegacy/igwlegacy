@@ -21,6 +21,8 @@ Each functionality has a separate file in `patches/` at the repository root:
 | [death_camera.c](../../patches/death_camera.c) | Immediate spectator movement after death, without automatic camera rise |
 | [respawn_countdown.c](../../patches/respawn_countdown.c) | Respawn countdown rounded up to seconds, with text expiring at the respawn deadline |
 | [centerprint_position.c](../../patches/centerprint_position.c) | Crosshair centerprints (round start, round winner, airstrike, server `cp`) moved up a quarter of the screen |
+| [cursor_size.c](../../patches/cursor_size.c) | Shared cursor size for the main menu, pause menu and purchasing overlays |
+| [cursor_position.c](../../patches/cursor_position.c) | Independent initial cursor positions for the main menu and ingame pause menu |
 | [shotgun.c](../../patches/shotgun.c) | Editable hardcoded shotgun stats and pellet damage falloff |
 | [hmg_reload.c](../../patches/hmg_reload.c) | HMG reloading while undeployed and cancellation by undeploying |
 | [spawn_protection.c](../../patches/spawn_protection.c) | Spawn protection time, forced to 2000 ms |
@@ -58,6 +60,20 @@ Immediate death spectating requires the patched `gamex86.dll` on the server and 
 The respawn countdown fix requires only the patched `cgamex86.dll` on the client. `CG_DrawDeathScreen` rounds the remaining milliseconds up to seconds and gives its centerprint the remaining time as its lifetime. The final `SPAWNING IN: 1` therefore covers the last second and expires at the server's advertised respawn deadline. Other centerprints keep their usual lifetime, and the server's respawn timing is unchanged. The two helpers occupy guarded function-alignment padding and use relative calls and jumps, so no new PE relocations are needed.
 
 The centerprint position change requires only the patched `cgamex86.dll` on the client. IGW draws centerprints on a dark band and treats their y argument as an offset from the screen centre in 480-line units, so messages printed with `0`, such as `ROUND STARTS IN` and `AIRSTRIKE PREVENTED!`, covered the crosshair. Those callers now pass `-CENTERPRINT_RAISE` (`120`, a quarter of the screen height), which places the band's centre at a quarter of the screen from the top. Messages that already sit below the crosshair keep their positions. Each change replaces the sign-extended immediate of a `push`, so no relocated operands are touched.
+
+### Cursor size
+
+Set `CURSOR_SIZE` in [cursor_size.c](../../patches/cursor_size.c) and rebuild. It defaults to 32 units in the menus' 640x480 coordinate system and controls both the square main-menu/pause-menu cursor and the purchasing/RTS overlay cursor. Install the patched `uix86.dll` and `cgamex86.dll` together.
+
+The menu cursor retains its existing UI scaling. The overlay cursor originally used a fixed 20-pixel size; it now scales both dimensions by `vidHeight / 480`, so 32 units draw as 32 pixels at 640x480 and 72 pixels at 1920x1080. Cursor position, click coordinates, shaders and texture coordinates keep their existing behavior. Shared float constants are left alone; private data and helper instructions occupy guarded function-alignment padding. The existing address relocation slots are preserved.
+
+To omit this feature, comment out all three `REGISTER_CODE_RULE`/`REGISTER_CODE_RULES` lines at the end of the file and rebuild.
+
+### Cursor position
+
+Set `MAIN_MENU_CURSOR_X`, `MAIN_MENU_CURSOR_Y`, `INGAME_MENU_CURSOR_X`, and `INGAME_MENU_CURSOR_Y` in [cursor_position.c](../../patches/cursor_position.c), then rebuild the patcher and install the patched `uix86.dll`. Both positions default to `(320, 240)`, the center of the menu. Coordinates use the menus' 640x480 area with `(0, 0)` at the top left; X supports 0 through 640 and Y supports 0 through 480. The patch applies the UI's display scale and horizontal widescreen offset automatically.
+
+Each position is set whenever its menu opens. The main menu previously kept the existing mouse position, while the ingame pause menu reset it to `(319, 80)` physical pixels. Submenus and purchasing overlays retain their existing behavior. To omit this feature, comment out both registration lines in `cursor_position.c` and rebuild.
 
 ### Hardcoded shotgun stats
 

@@ -18,6 +18,8 @@ patch_sources = [git_version] + files(
 	'death_camera.c',
 	'respawn_countdown.c',
 	'centerprint_position.c',
+	'cursor_size.c',
+	'cursor_position.c',
 	'shotgun.c',
 	'hmg_reload.c',
 	'main_menu_ad.c',

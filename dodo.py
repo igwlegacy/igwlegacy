@@ -24,6 +24,9 @@ DIST_PK3 = DIST / "base" / "zzzigwlegacy.pk3"
 ASSET_BUILD = ROOT / "build" / "assets"
 # Use None for the size to convert formats while preserving source dimensions.
 TEXTURE_RULES = {
+    "textures/gfx/cursor.dds": ("cursor.png", None),
+    "textures/ui/cursor.dds": ("cursor.png", None),
+
     "textures/ui/mmbg1.dds": ("wallpaper.png", "2048x2048"),
     "textures/ui/mmbg1ws.dds": ("wallpaper.png", "2048x2048"),
     "textures/ui/mmbottomedge1.dds": ("nothing.png", "256x256"),
