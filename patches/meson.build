@@ -28,6 +28,7 @@ patch_sources = [git_version] + files(
 	'stronghold_markers.c',
 	'pickup_markers.c',
 	'skip_intro.c',
+	'bot_slots.c',
 	'console_stdout.c',
 	'use_shaders.c',
 	'heat_haze.c',
