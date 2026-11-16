@@ -22,7 +22,7 @@ Each functionality has a separate file in `patches/` at the repository root:
 | [respawn_countdown.c](../../patches/respawn_countdown.c) | Respawn countdown rounded up to seconds, with text expiring at the respawn deadline |
 | [centerprint_position.c](../../patches/centerprint_position.c) | Crosshair centerprints (round start, round winner, airstrike, server `cp`) moved up a quarter of the screen |
 | [cursor_size.c](../../patches/cursor_size.c) | Shared cursor size for the main menu, pause menu and purchasing overlays |
-| [cursor_position.c](../../patches/cursor_position.c) | Independent initial cursor positions for the main menu and ingame pause menu |
+| [cursor_position.c](../../patches/cursor_position.c) | Independent cursor positions for opening the main and ingame menus and completing loading |
 | [shotgun.c](../../patches/shotgun.c) | Editable hardcoded shotgun stats and pellet damage falloff |
 | [hmg_reload.c](../../patches/hmg_reload.c) | HMG reloading while undeployed and cancellation by undeploying |
 | [spawn_protection.c](../../patches/spawn_protection.c) | Spawn protection time, forced to 2000 ms |
@@ -71,9 +71,9 @@ To omit this feature, comment out all three `REGISTER_CODE_RULE`/`REGISTER_CODE_
 
 ### Cursor position
 
-Set `MAIN_MENU_CURSOR_X`, `MAIN_MENU_CURSOR_Y`, `INGAME_MENU_CURSOR_X`, and `INGAME_MENU_CURSOR_Y` in [cursor_position.c](../../patches/cursor_position.c), then rebuild the patcher and install the patched `uix86.dll`. Both positions default to `(320, 240)`, the center of the menu. Coordinates use the menus' 640x480 area with `(0, 0)` at the top left; X supports 0 through 640 and Y supports 0 through 480. The patch applies the UI's display scale and horizontal widescreen offset automatically.
+Set `MAIN_MENU_CURSOR_X/Y`, `INGAME_MENU_CURSOR_X/Y`, and `LOADING_COMPLETE_CURSOR_X/Y` in [cursor_position.c](../../patches/cursor_position.c), then rebuild the patcher and install the patched `uix86.dll`. All three positions default to `(320, 240)`, the center of the menu. Coordinates use the menus' 640x480 area with `(0, 0)` at the top left; X supports 0 through 640 and Y supports 0 through 480. The patch applies the UI's display scale and horizontal widescreen offset automatically.
 
-Each position is set whenever its menu opens. The main menu previously kept the existing mouse position, while the ingame pause menu reset it to `(319, 80)` physical pixels. Submenus and purchasing overlays retain their existing behavior. To omit this feature, comment out both registration lines in `cursor_position.c` and rebuild.
+The main and ingame positions are set whenever those menus open. The loading-completion position is set once when loading finishes and the `PLAY!` button appears, including when loading is already complete as the loading menu opens. The main menu previously kept the existing mouse position, the ingame pause menu reset it to `(319, 80)` physical pixels, and loading completion used half the display width and 400 physical pixels down. Submenus and purchasing overlays retain their existing behavior. To omit this feature, comment out both registration lines in `cursor_position.c` and rebuild.
 
 ### Hardcoded shotgun stats
 
