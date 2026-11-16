@@ -14,6 +14,7 @@ Each functionality has a separate file in `patches/` at the repository root:
 | [use_shaders.c](../../patches/use_shaders.c) | Engine `r_useShaders` forced to `1` |
 | [heat_haze.c](../../patches/heat_haze.c) | Engine `r_heathazedistort` forced to `0` |
 | [console_stdout.c](../../patches/console_stdout.c) | Engine console output mirrored to stdout |
+| [window_close.c](../../patches/window_close.c) | Game window close calls the engine's quit routine immediately |
 | [screen_shake.c](../../patches/screen_shake.c) | Explosion and death shake |
 | [damage_kick.c](../../patches/damage_kick.c) | Damage pitch and roll, including the return phase |
 | [landing_dip.c](../../patches/landing_dip.c) | Eye-height dip on landing |
@@ -195,6 +196,8 @@ The executable uses instruction patches in [fog.c](../../patches/fog.c) to repla
 [heat_haze.c](../../patches/heat_haze.c) forces `r_heathazedistort` to `0` the same way: its registration passes the existing `"0"` literal instead of `"0.01"` to `Cvar_Set`, and its only renderer read loads `0.0` instead of the CVAR value, which removes the heat-haze distortion.
 
 [console_stdout.c](../../patches/console_stdout.c) mirrors every line the engine appends to its console window to the process's stdout, which covers all `Com_Printf` output except rcon-redirected replies, plus `Sys_Error` messages and echoed console input. A hook at the end of `Conbuf_AppendText` takes the text after color codes have been stripped, removes carriage returns so lines end in plain LF, and writes it unbuffered with `WriteFile` to `GetStdHandle(STD_OUTPUT_HANDLE)`. Without an inherited stdout, for example when the game is launched normally on Windows, the write fails silently. Under Wine, launching `igwlegacy.exe` from a terminal or redirecting its output to a file is enough. The helper is spread over unused function-alignment padding and calls the imports through the existing IAT slots relative to its own address, so no relocations are added.
+
+[window_close.c](../../patches/window_close.c) replaces the game window's `WM_CLOSE` call to `Cbuf_AddText("quit")` at RVA `0x4e4ed` with a direct call to `Com_Quit_f` at RVA `0x20920`. The normal quit routine shuts down the server, client, renderer and filesystem, then exits the process. It runs while the window still exists, before `DefWindowProcA` can destroy it, without waiting for another frame to execute the command buffer. The patch does not change `WM_DESTROY`, so renderer restarts can still recreate the window. The relative call adds no relocations and the preceding string-address relocation stays intact.
 
 No syscall payload is added to the executable.
 
