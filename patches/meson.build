@@ -1,4 +1,13 @@
-patch_sources = files(
+# Refresh at build time so a new commit updates incremental builds as well.
+git_version = vcs_tag(
+	input: 'version.h.in',
+	output: 'version.h',
+	command: ['git', 'describe', '--tags', '--always'],
+	fallback: 'unknown',
+)
+
+patch_sources = [git_version] + files(
+	'version.c',
 	'disable_bobbing.c',
 	'fog.c',
 	'ambient_sounds.c',

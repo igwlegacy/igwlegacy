@@ -1,0 +1,6 @@
+#ifndef IGW_VERSION_H
+#define IGW_VERSION_H
+
+#define IGW_GIT_VERSION "@VCS_TAG@"
+
+#endif

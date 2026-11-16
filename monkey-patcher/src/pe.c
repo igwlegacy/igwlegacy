@@ -57,11 +57,16 @@ static bool fits(size_t offset, size_t size, size_t total)
     return offset <= total && size <= total - offset;
 }
 
-/* Translate only file-backed bytes. An RVA in .data's uninitialized tail
- * is not a file offset, and must never be patched directly on disk.
+/* Headers map at their file offsets; sections map only file-backed bytes.
+ * An RVA in .data's uninitialized tail must never be patched on disk.
  */
 bool image_offset(const image_t *image, uint32_t rva, size_t size, size_t *offset)
 {
+    if (fits(rva, size, get32(image->data + image->optional + 60)) &&
+        fits(rva, size, image->size)) {
+        *offset = rva;
+        return true;
+    }
     for (uint16_t i = 0; i < image->section_count; ++i) {
         const unsigned char *section = image->data + image->sections + (size_t)i * 40;
         uint32_t start = get32(section + 12), raw_size = get32(section + 16);
