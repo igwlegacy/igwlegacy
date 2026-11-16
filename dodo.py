@@ -236,7 +236,8 @@ def task_textures():
         source = ROOT / "raw-assets" / filename
         output = ASSET_BUILD / name
         yield {
-            "name": Path(name).name,
+            # Keep the directory so matching filenames have distinct tasks.
+            "name": name,
             "actions": [(_convert_texture, [source, size, output])],
             "file_dep": [str(source)],
             "targets": [str(output)],
