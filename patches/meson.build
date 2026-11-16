@@ -24,6 +24,7 @@ patch_sources = [git_version] + files(
 	'hmg_reload.c',
 	'main_menu_ad.c',
 	'main_menu_github.c',
+	'main_menu_top_edge.c',
 	'loading_background.c',
 	'loading_menu.c',
 	# 'autoplay.c',
