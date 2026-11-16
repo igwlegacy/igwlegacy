@@ -12,10 +12,9 @@
  *
  * SV_BotAllocateClient (RVA 0x35df0) scans upwards from slot 0, so a bot
  * that G_CheckMinimumPlayers adds before the local client has connected
- * takes slot 0. The player then replaces that bot and ends up stuck as a
- * spectator: "Hit Enter to start" is shown, but no class menu ever opens,
- * so pickinfo is never sent and the player never spawns until a map
- * restart.
+ * takes slot 0. The player then replaces that bot, which is dropped and
+ * later re-added by G_CheckMinimumPlayers, needlessly churning a bot
+ * through connect, drop and connect on every fresh start.
  *
  * Replace the upward scan with a downward one from sv_maxclients - 1.
  * EDX holds sv_maxclients->integer and ECX svs.clients on entry. The loop
