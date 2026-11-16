@@ -29,6 +29,7 @@ patch_sources = [git_version] + files(
 	'pickup_markers.c',
 	'skip_intro.c',
 	'bot_slots.c',
+	'flood_protect.c',
 	'console_stdout.c',
 	'use_shaders.c',
 	'heat_haze.c',
