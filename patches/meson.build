@@ -10,6 +10,7 @@ patch_sources = [git_version] + files(
 	'version.c',
 	'disable_bobbing.c',
 	'fog.c',
+	'maxfps.c',
 	'ambient_sounds.c',
 	'screen_shake.c',
 	'damage_kick.c',
