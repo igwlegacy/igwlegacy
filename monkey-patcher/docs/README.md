@@ -13,6 +13,7 @@ Each functionality has a separate file in `patches/` at the repository root:
 | [skip_intro.c](../../patches/skip_intro.c) | Intro video at startup |
 | [use_shaders.c](../../patches/use_shaders.c) | Engine `r_useShaders` forced to `1` |
 | [heat_haze.c](../../patches/heat_haze.c) | Engine `r_heathazedistort` forced to `0` |
+| [console_stdout.c](../../patches/console_stdout.c) | Engine console output mirrored to stdout |
 | [screen_shake.c](../../patches/screen_shake.c) | Explosion and death shake |
 | [damage_kick.c](../../patches/damage_kick.c) | Damage pitch and roll, including the return phase |
 | [landing_dip.c](../../patches/landing_dip.c) | Eye-height dip on landing |
@@ -192,6 +193,8 @@ The executable uses instruction patches in [fog.c](../../patches/fog.c) to repla
 [use_shaders.c](../../patches/use_shaders.c) forces `r_useShaders` to `1`. Its renderer registration calls the engine's `Cvar_Set` through the adjacent refimport slot instead of `Cvar_Get`, which overwrites saved or user-created values with `1` on every renderer start, including `vid_restart`, and still returns the CVAR pointer. All eight renderer reads of its integer field behave as if it were `1`, so later console or UI changes have no effect. The CVAR is no longer registered with `CVAR_ARCHIVE`, although an archived value from the config keeps that flag and is saved as `1`. The patched `cgamex86.dll` also ignores `r_useShaders` when deciding whether to draw `r_bloom`, so bloom depends on `r_bloom` alone.
 
 [heat_haze.c](../../patches/heat_haze.c) forces `r_heathazedistort` to `0` the same way: its registration passes the existing `"0"` literal instead of `"0.01"` to `Cvar_Set`, and its only renderer read loads `0.0` instead of the CVAR value, which removes the heat-haze distortion.
+
+[console_stdout.c](../../patches/console_stdout.c) mirrors every line the engine appends to its console window to the process's stdout, which covers all `Com_Printf` output except rcon-redirected replies, plus `Sys_Error` messages and echoed console input. A hook at the end of `Conbuf_AppendText` takes the text after color codes have been stripped, removes carriage returns so lines end in plain LF, and writes it unbuffered with `WriteFile` to `GetStdHandle(STD_OUTPUT_HANDLE)`. Without an inherited stdout, for example when the game is launched normally on Windows, the write fails silently. Under Wine, launching `igwlegacy.exe` from a terminal or redirecting its output to a file is enough. The helper is spread over unused function-alignment padding and calls the imports through the existing IAT slots relative to its own address, so no relocations are added.
 
 No syscall payload is added to the executable.
 

@@ -18,6 +18,7 @@ patch_sources = files(
 	'stronghold_markers.c',
 	'pickup_markers.c',
 	'skip_intro.c',
+	'console_stdout.c',
 	'use_shaders.c',
 	'heat_haze.c',
 	'spawn_protection.c',

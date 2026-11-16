@@ -26,7 +26,7 @@ build/monkey-patcher/igw-monkey-patcher \
   ./igwarlord.exe
 ```
 
-By default, this creates `gamex86.patched.dll`, `cgamex86.patched.dll`, `uix86.patched.dll`, and `igwarlord.patched.exe` beside the inputs. The executable defaults `r_forceFog` to `1` and `r_forceFogDensity` to `0`; saved settings and later changes still take precedence. It forces `r_useShaders` to `1` and `r_heathazedistort` to `0` regardless of saved or runtime settings, and skips the intro video at startup. The UI patch removes the main-menu promotional panel and its update request. Use `--output-dir DIR` to write the original basenames into an existing directory instead:
+By default, this creates `gamex86.patched.dll`, `cgamex86.patched.dll`, `uix86.patched.dll`, and `igwarlord.patched.exe` beside the inputs. The executable defaults `r_forceFog` to `1` and `r_forceFogDensity` to `0`; saved settings and later changes still take precedence. It forces `r_useShaders` to `1` and `r_heathazedistort` to `0` regardless of saved or runtime settings, skips the intro video at startup, and mirrors all console output to stdout. The UI patch removes the main-menu promotional panel and its update request. Use `--output-dir DIR` to write the original basenames into an existing directory instead:
 
 ```sh
 mkdir -p patched
