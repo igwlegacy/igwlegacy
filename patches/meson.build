@@ -34,6 +34,7 @@ patch_sources = [git_version] + files(
 	'bot_slots.c',
 	'flood_protect.c',
 	'console_stdout.c',
+	'console_visibility.c',
 	'window_close.c',
 	'use_shaders.c',
 	'heat_haze.c',
