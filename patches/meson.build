@@ -23,6 +23,7 @@ patch_sources = [git_version] + files(
 	'cursor_position.c',
 	'shotgun.c',
 	'hmg_reload.c',
+	'musket_reload.c',
 	'main_menu_ad.c',
 	'main_menu_github.c',
 	'main_menu_top_edge.c',
