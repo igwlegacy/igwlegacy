@@ -17,6 +17,7 @@ Each functionality has a separate file in `patches/` at the repository root:
 | [window_close.c](../../patches/window_close.c) | Game window close calls the engine's quit routine immediately |
 | [screen_shake.c](../../patches/screen_shake.c) | Explosion and death shake |
 | [damage_kick.c](../../patches/damage_kick.c) | Damage pitch and roll, including the return phase |
+| [burning_screen.c](../../patches/burning_screen.c) | Prevent a false burning overlay at the start of a game |
 | [landing_dip.c](../../patches/landing_dip.c) | Eye-height dip on landing |
 | [death_camera.c](../../patches/death_camera.c) | Immediate spectator movement after death, without automatic camera rise |
 | [respawn_countdown.c](../../patches/respawn_countdown.c) | Respawn countdown rounded up to seconds, with text expiring at the respawn deadline |

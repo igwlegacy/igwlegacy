@@ -14,6 +14,7 @@ patch_sources = [git_version] + files(
 	'ambient_sounds.c',
 	'screen_shake.c',
 	'damage_kick.c',
+	'burning_screen.c',
 	'landing_dip.c',
 	'death_camera.c',
 	'respawn_countdown.c',
