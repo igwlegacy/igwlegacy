@@ -24,6 +24,7 @@ patch_sources = [git_version] + files(
 	'shotgun.c',
 	'hmg_reload.c',
 	'musket_reload.c',
+	'musket_zoom.c',
 	'main_menu_ad.c',
 	'main_menu_github.c',
 	'main_menu_top_edge.c',

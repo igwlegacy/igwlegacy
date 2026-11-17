@@ -26,6 +26,7 @@ Each functionality has a separate file in `patches/` at the repository root:
 | [cursor_position.c](../../patches/cursor_position.c) | Independent cursor positions for opening the main and ingame menus and completing loading |
 | [shotgun.c](../../patches/shotgun.c) | Editable hardcoded shotgun stats and pellet damage falloff |
 | [hmg_reload.c](../../patches/hmg_reload.c) | HMG reloading while undeployed and cancellation by undeploying |
+| [musket_zoom.c](../../patches/musket_zoom.c) | Editable right-click musket zoom-in duration |
 | [spawn_protection.c](../../patches/spawn_protection.c) | Spawn protection time, forced to 2000 ms |
 | [team_repair.c](../../patches/team_repair.c) | Toolkit refills a teammate's current clip for money |
 | [rts_spectator.c](../../patches/rts_spectator.c) | Prevent entering RTS mode while spectating or dead |
@@ -75,6 +76,12 @@ To omit this feature, comment out all three `REGISTER_CODE_RULE`/`REGISTER_CODE_
 Set `MAIN_MENU_CURSOR_X/Y`, `INGAME_MENU_CURSOR_X/Y`, and `LOADING_COMPLETE_CURSOR_X/Y` in [cursor_position.c](../../patches/cursor_position.c), then rebuild the patcher and install the patched `uix86.dll`. All three positions default to `(320, 240)`, the center of the menu. Coordinates use the menus' 640x480 area with `(0, 0)` at the top left; X supports 0 through 640 and Y supports 0 through 480. The patch applies the UI's display scale and horizontal widescreen offset automatically.
 
 The main and ingame positions are set whenever those menus open. The loading-completion position is set once when loading finishes and the `PLAY!` button appears, including when loading is already complete as the loading menu opens. The main menu previously kept the existing mouse position, the ingame pause menu reset it to `(319, 80)` physical pixels, and loading completion used half the display width and 400 physical pixels down. Submenus and purchasing overlays retain their existing behavior. To omit this feature, comment out both registration lines in `cursor_position.c` and rebuild.
+
+### Musket zoom timing
+
+Set `MUSKET_ZOOM_IN_MS` in [musket_zoom.c](../../patches/musket_zoom.c), rebuild the patcher and install the patched `cgamex86.dll` on the client. The value is a positive integer in milliseconds and defaults to the stock 200 ms. Use `1` for a virtually immediate zoom. It controls how long the view takes to zoom in when right-clicking with the musket; the weapon animation and deployment delay retain their existing timing. The zoom amount, 150 ms zoom-out and other weapons' zoom timings are unchanged.
+
+To omit this feature, comment out both registration lines at the end of `musket_zoom.c` and rebuild.
 
 ### Hardcoded shotgun stats
 
