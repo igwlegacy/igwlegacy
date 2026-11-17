@@ -3,21 +3,27 @@
 #include <float.h>
 #include <string.h>
 
-/* Right-click musket zoom-in duration, in milliseconds (stock: 200).
+/* Right-click musket zoom timings, in milliseconds (stock: 200, delay: 0).
  * Edit, rebuild and install the patched cgamex86.dll on the client.
  * Use 1 for a virtually immediate zoom; zoom-out still takes 150 ms.
- * This controls the view's FOV transition, not the weapon animation.
+ * The delay holds the normal FOV before the transition starts. Both times
+ * begin when aiming is accepted; existing weapon cooldowns still apply.
+ * These control the view's FOV transition, not the weapon animation.
  */
 #define MUSKET_ZOOM_IN_MS 200
+#define MUSKET_ZOOM_DELAY_MS 0
 
 _Static_assert(MUSKET_ZOOM_IN_MS >= 1 && MUSKET_ZOOM_IN_MS <= INT32_MAX,
                "Musket zoom-in time must be a positive signed 32-bit value");
+_Static_assert(MUSKET_ZOOM_DELAY_MS >= 0 && MUSKET_ZOOM_DELAY_MS <= INT32_MAX,
+               "Musket zoom delay must be a nonnegative signed 32-bit value");
 _Static_assert(sizeof(float) == 4 && FLT_RADIX == 2 && FLT_MANT_DIG == 24 &&
                FLT_MAX_EXP == 128, "Musket zoom requires IEEE binary32 floats");
 
 /* CG_CalcFov divides elapsed zoom-in time by a pooled 200.0 double at
- * 0x34df4. Scale the elapsed time by 200 / MUSKET_ZOOM_IN_MS first, only
- * when cg.deployZoom == 1 (PM_ToggleDeploy's musket aiming mode).
+ * 0x34df4. First subtract the delay, clamp to zero, then scale the elapsed
+ * time by 200 / MUSKET_ZOOM_IN_MS, only when cg.deployZoom == 1
+ * (PM_ToggleDeploy's musket aiming mode).
  * Sniper zoom uses mode 2; zoom-out has its own unmodified division.
  *
  * Replace the preceding mov/fild pair rather than the division, keeping
@@ -45,8 +51,28 @@ static const code_rule_t patch_musket_zoom[] = {
         0xcc, 0xcc, 0xcc, 0xcc, 0xcc, 0xcc, 0xcc },
       { 0x58,                           /* pop eax: image base + 0x348ce */
         0x83, 0xb8, B4(0xda0ee0u - 0x348ceu), 0x01,
-        0x0f, 0x84, B4(0x35083u - 0x3482fu),
+        0x0f, 0x84, B4(0x33801u - 0x3482fu),
         0xc3 } },
+    { CGAME, true, "musket zoom: subtract start delay", 0x33801, 14,
+      { 0xcc, 0xcc, 0xcc, 0xcc, 0xcc, 0xcc, 0xcc,
+        0xcc, 0xcc, 0xcc, 0xcc, 0xcc, 0xcc, 0xcc },
+      { 0x68, B4(MUSKET_ZOOM_DELAY_MS), /* push delay */
+        0xda, 0x24, 0x24,              /* fisub dword [esp] */
+        0x58,                          /* pop eax */
+        0xe9, B4(0x33841u - 0x3380fu) } },
+
+    /* A negative elapsed time would widen the FOV during the delay.
+     * Keep max(elapsed - delay, 0) on the x87 stack instead.
+     */
+    { CGAME, true, "musket zoom: hold view during delay", 0x33841, 15,
+      { 0xcc, 0xcc, 0xcc, 0xcc, 0xcc, 0xcc, 0xcc, 0xcc,
+        0xcc, 0xcc, 0xcc, 0xcc, 0xcc, 0xcc, 0xcc },
+      { 0xd9, 0xee,                    /* fldz */
+        0xd9, 0xc9,                    /* fxch st(1) */
+        0xdb, 0xf1,                    /* fcomi st,st(1) */
+        0xda, 0xc1,                    /* fcmovb st,st(1) */
+        0xdd, 0xd9,                    /* fstp st(1) */
+        0xe9, B4(0x35083u - 0x33850u) } },
 };
 
 static code_rule_t patch_musket_zoom_scale = {

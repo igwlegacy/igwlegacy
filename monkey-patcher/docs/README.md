@@ -26,7 +26,7 @@ Each functionality has a separate file in `patches/` at the repository root:
 | [cursor_position.c](../../patches/cursor_position.c) | Independent cursor positions for opening the main and ingame menus and completing loading |
 | [shotgun.c](../../patches/shotgun.c) | Editable hardcoded shotgun stats and pellet damage falloff |
 | [hmg_reload.c](../../patches/hmg_reload.c) | HMG reloading while undeployed and cancellation by undeploying |
-| [musket_zoom.c](../../patches/musket_zoom.c) | Editable right-click musket zoom-in duration |
+| [musket_zoom.c](../../patches/musket_zoom.c) | Editable right-click musket zoom-in duration and start delay |
 | [spawn_protection.c](../../patches/spawn_protection.c) | Spawn protection time, forced to 2000 ms |
 | [team_repair.c](../../patches/team_repair.c) | Toolkit refills a teammate's current clip for money |
 | [rts_spectator.c](../../patches/rts_spectator.c) | Prevent entering RTS mode while spectating or dead |
@@ -79,7 +79,9 @@ The main and ingame positions are set whenever those menus open. The loading-com
 
 ### Musket zoom timing
 
-Set `MUSKET_ZOOM_IN_MS` in [musket_zoom.c](../../patches/musket_zoom.c), rebuild the patcher and install the patched `cgamex86.dll` on the client. The value is a positive integer in milliseconds and defaults to the stock 200 ms. Use `1` for a virtually immediate zoom. It controls how long the view takes to zoom in when right-clicking with the musket; the weapon animation and deployment delay retain their existing timing. The zoom amount, 150 ms zoom-out and other weapons' zoom timings are unchanged.
+Set `MUSKET_ZOOM_IN_MS` and `MUSKET_ZOOM_DELAY_MS` in [musket_zoom.c](../../patches/musket_zoom.c), rebuild the patcher and install the patched `cgamex86.dll` on the client. The duration is a positive integer in milliseconds and defaults to the stock 200 ms. Use `1` for a virtually immediate transition. The delay is a nonnegative integer in milliseconds, defaulting to `0`, that holds the normal field of view before starting the transition. For example, delay `100` and duration `400` wait 100 ms and then zoom over 400 ms.
+
+Both timings begin when the weapon accepts the aiming action. Firing, drawing and other existing weapon cooldowns can postpone that action even with delay `0`. The weapon animation, deployment delay, zoom amount, 150 ms zoom-out and other weapons' zoom timings are unchanged.
 
 To omit this feature, comment out both registration lines at the end of `musket_zoom.c` and rebuild.
 
