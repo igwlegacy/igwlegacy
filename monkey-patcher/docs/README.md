@@ -30,6 +30,7 @@ Each functionality has a separate file in `patches/` at the repository root:
 | [spawn_protection.c](../../patches/spawn_protection.c) | Spawn protection time, forced to 2000 ms |
 | [team_repair.c](../../patches/team_repair.c) | Toolkit refills a teammate's current clip for money |
 | [rts_spectator.c](../../patches/rts_spectator.c) | Prevent entering RTS mode while spectating or dead |
+| [rts_grid.c](../../patches/rts_grid.c) | Snap RTS building placement to a configurable world-space grid |
 | [main_menu_ad.c](../../patches/main_menu_ad.c) | Main-menu promotional panel, ticker, and update request |
 | [autoplay.c](../../patches/autoplay.c) | Automatically enter the game once loading finishes, without clicking `PLAY!` |
 | [valuable_markers.c](../../patches/valuable_markers.c) | Persistent models at every valuable spawn position |
@@ -172,6 +173,14 @@ Most maps mark buildable ground per brush face rather than per material: the BSP
 A world surface whose material carries surface flag `0x80000` (`surfaceparm canbuild`) or contents `0x400` is highlighted directly. Any other upward-facing world face is classified once, the first time it is drawn, using the same world trace the server's build check uses (`G_CheckBuildSpot`, mask `0x2011801`). The trace passes through the centre of the face's first triangle along its normal. The result is cached in the face's unused plane padding until the next map load. Planar faces also require an upward normal of at least `0.6`, as in `G_CheckBuildSpot`. Curved and triangle surfaces, and the faces of brush models such as doors, follow only their material's marking. This shows terrain eligibility. The server still checks a structure's footprint, nearby structures, special placement rules, and the player's money when building.
 
 The client passes the overlay shader handle in the unused upper 16 bits of the main world refdef's `rdflags`. The renderer retains the original terrain draw and submits the same geometry with a translucent, unlit green shader. The inlined world and brush-model submission loops route through the same overlay helper. Models, HUD scenes and the map render target retain their usual rendering. All four registrations at the end of `patches/rts_buildable.c` belong together; comment them out and rebuild to omit the feature.
+
+### RTS placement grid
+
+Set `RTS_GRID_SIZE_X` and `RTS_GRID_SIZE_Y` in [rts_grid.c](../../patches/rts_grid.c), rebuild the patcher, and install the patched `cgamex86.dll` on the client. Both default to 32 map units and accept whole-unit spacing from 1 through 32768. Grid lines are anchored at world `(0, 0)`, including negative coordinates; halfway positions choose the even grid index.
+
+The cursor ray's hit is snapped horizontally, then traced vertically to find the ground at that grid point. The original placement checks use that new trace's height, surface normal, buildable flags and entity hits. Placement smoothing is disabled for grid-snapped structures so both the preview and the submitted build position stay on the grid. Trip mines retain free placement at both ends and their original smoothing. Stronghold rebuilding retains its map-defined attachment positions. Server placement validation still applies. Keep both registrations at the end of `rts_grid.c` enabled together.
+
+Machine-gun and anti-tank turret rotation snaps to `RTS_TURRET_ANGLE_STEP`, which defaults to 45 degrees. This rounds the final world yaw so the preview and submitted build command share the same orientation regardless of camera direction. Other structures retain their existing rotation behavior. The angle step must be a positive whole-number divisor of 360; halfway positions choose the even step index.
 
 ### CVAR mapping
 

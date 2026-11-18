@@ -45,6 +45,7 @@ patch_sources = [git_version] + files(
 	'spawn_protection.c',
 	'team_repair.c',
 	'rts_spectator.c',
+	'rts_grid.c',
 	# 'rts_buildable.c',
 )
 
