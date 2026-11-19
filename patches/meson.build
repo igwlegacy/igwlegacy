@@ -8,6 +8,7 @@ git_version = vcs_tag(
 
 patch_sources = [git_version] + files(
 	'version.c',
+	'no_steam.c',
 	'disable_bobbing.c',
 	'fog.c',
 	'maxfps.c',

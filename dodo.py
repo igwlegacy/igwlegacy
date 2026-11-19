@@ -12,13 +12,24 @@ from doit.tools import config_changed
 ROOT = Path(__file__).resolve().parent
 PATCHER_BUILD = ROOT / "build"
 PATCHER = PATCHER_BUILD / "monkey-patcher" / "igw-monkey-patcher"
+# igwarlord-server.exe is the dedicated server's igwarlord.exe, renamed to
+# share the directory with the client's.
 INPUT_BINARIES = [
     ROOT / "input-binaries" / name
-    for name in ("gamex86.dll", "cgamex86.dll", "uix86.dll", "igwarlord.exe")
+    for name in (
+        "gamex86.dll",
+        "cgamex86.dll",
+        "uix86.dll",
+        "igwarlord.exe",
+        "igwarlord-server.exe",
+    )
 ]
 DIST = ROOT / "dist"
 # Name of the patched igwarlord.exe in dist/.
 DIST_EXE_NAME = "igwlegacy.exe"
+# The dedicated server keeps its name in the server directory of an IGW
+# installation.
+DIST_SERVER_EXE = Path("server", "igwarlord.exe")
 # The game loads PK3s from its base game directory, like the DLLs.
 DIST_PK3 = DIST / "base" / "zzzigwlegacy.pk3"
 ASSET_BUILD = ROOT / "build" / "assets"
@@ -194,6 +205,8 @@ def _dist_path(binary):
     # for the unpatched original.
     if binary.suffix.lower() == ".dll":
         return Path("base", binary.name)
+    if binary.name == "igwarlord-server.exe":
+        return DIST_SERVER_EXE
     return Path(DIST_EXE_NAME)
 
 
@@ -266,8 +279,9 @@ def task_models():
 def task_dist():
     """Package gamedir as igwlegacy.pk3 and add patched binaries in dist/.
 
-    The PK3 and the patched DLLs go to dist/base/, the executable to
-    dist/igwlegacy.exe.
+    The PK3 and the patched DLLs go to dist/base/, the client executable
+    to dist/igwlegacy.exe and the dedicated server's to
+    dist/server/igwarlord.exe.
     """
     gamedir = _gamedir_sources()
     return {
