@@ -11,7 +11,7 @@ patch_sources = [git_version] + files(
 	'disable_bobbing.c',
 	'fog.c',
 	'maxfps.c',
-	'ambient_sounds.c',
+	# 'ambient_sounds.c',
 	'screen_shake.c',
 	'damage_kick.c',
 	'burning_screen.c',
@@ -21,10 +21,6 @@ patch_sources = [git_version] + files(
 	'centerprint_position.c',
 	'cursor_size.c',
 	'cursor_position.c',
-	'shotgun.c',
-	'hmg_reload.c',
-	'musket_reload.c',
-	'musket_zoom.c',
 	'main_menu_ad.c',
 	'main_menu_github.c',
 	'main_menu_top_edge.c',
@@ -42,11 +38,17 @@ patch_sources = [git_version] + files(
 	'window_close.c',
 	'use_shaders.c',
 	'heat_haze.c',
-	'spawn_protection.c',
 	'team_repair.c',
 	'rts_spectator.c',
 	'rts_grid.c',
 	# 'rts_buildable.c',
+
+	# balance changes
+	# 'spawn_protection.c',
+	# 'musket_reload.c',
+	# 'musket_zoom.c',
+	# 'hmg_reload.c',
+	# 'shotgun.c',
 )
 
 patch_include_dirs = include_directories('.')

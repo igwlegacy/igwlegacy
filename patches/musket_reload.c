@@ -8,7 +8,7 @@
  * 3000 ms reload remains X; Z is its remaining recovery time. Install
  * matching game and cgame DLLs after changing this value and rebuilding.
  */
-#define MUSKET_LOAD_MS 1500
+#define MUSKET_LOAD_MS 1100
 
 _Static_assert(MUSKET_LOAD_MS > 0 && MUSKET_LOAD_MS < 3000,
                "Musket loading must leave a positive recovery time");

@@ -10,7 +10,7 @@
  * begin when aiming is accepted; existing weapon cooldowns still apply.
  * These control the view's FOV transition, not the weapon animation.
  */
-#define MUSKET_ZOOM_IN_MS 200
+#define MUSKET_ZOOM_IN_MS 400
 #define MUSKET_ZOOM_DELAY_MS 0
 
 _Static_assert(MUSKET_ZOOM_IN_MS >= 1 && MUSKET_ZOOM_IN_MS <= INT32_MAX,
