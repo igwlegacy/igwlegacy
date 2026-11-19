@@ -40,7 +40,6 @@ patch_sources = [git_version] + files(
 	'window_close.c',
 	'use_shaders.c',
 	'heat_haze.c',
-	'team_repair.c',
 	'rts_spectator.c',
 	'rts_grid.c',
 	# 'rts_buildable.c',
@@ -51,6 +50,7 @@ patch_sources = [git_version] + files(
 	# 'musket_zoom.c',
 	# 'hmg_reload.c',
 	# 'shotgun.c',
+	# 'team_repair.c',
 )
 
 patch_include_dirs = include_directories('.')
