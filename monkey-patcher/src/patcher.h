@@ -12,7 +12,10 @@
  */
 #define PAYLOAD_MAX 0x40000
 
-typedef enum { GAME, CGAME, UI, ENGINE } module_t;
+/* ENGINE is the client's igwarlord.exe, SERVER the different igwarlord.exe
+ * of the dedicated server, which ships in the server directory.
+ */
+typedef enum { GAME, CGAME, UI, ENGINE, SERVER } module_t;
 typedef enum { CVAR_DEFAULT, CVAR_FORCE } cvar_mode_t;
 
 typedef struct {
@@ -32,6 +35,28 @@ typedef struct {
     unsigned char expected[PATCH_MAX];
     unsigned char replacement[PATCH_MAX];
 } code_rule_t;
+
+/* Bytes written over IMPORT_STUB_SIZE int3s: xor eax,eax; ret. */
+#define IMPORT_STUB_SIZE 3
+/* Upper bound for the functions of one dropped import. */
+#define IMPORT_FUNCTIONS_MAX 64
+
+/* Drop an imported DLL from the import directory, so the loader no longer
+ * needs it. Every IAT slot of its descriptor is bound on disk to one stub
+ * at stub_rva that returns 0 and leaves the arguments to the caller. That
+ * only suits cdecl functions whose callers accept 0, NULL, false or no
+ * result. New base relocations keep the slots valid if the image is ever
+ * rebased.
+ */
+typedef struct {
+    module_t module;
+    const char *name;
+    const char *dll;
+    /* Expected count of imported functions; guards the descriptor. */
+    size_t functions;
+    /* int3 padding inside an executable section that receives the stub. */
+    uint32_t stub_rva;
+} import_rule_t;
 
 typedef struct {
     module_t module;
@@ -72,6 +97,8 @@ extern const code_rule_t *const *code_rules;
 extern size_t code_rule_count;
 extern const payload_feature_t *const *payload_features;
 extern size_t payload_feature_count;
+extern const import_rule_t *const *import_rules;
+extern size_t import_rule_count;
 
 uint16_t get16(const unsigned char *p);
 uint32_t get32(const unsigned char *p);

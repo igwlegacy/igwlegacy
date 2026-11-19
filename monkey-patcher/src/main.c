@@ -50,13 +50,14 @@ static char *output_path(const char *input, const char *directory, module_t modu
         return result;
     }
     /* Contents select the output type even when an input has been renamed. */
-    const char *extension = module == ENGINE ? ".exe" : ".dll";
+    bool executable = module == ENGINE || module == SERVER;
+    const char *extension = executable ? ".exe" : ".dll";
     if (length >= 4 && input[length - 4] == '.' &&
         tolower((unsigned char)input[length - 3]) == extension[1] &&
         tolower((unsigned char)input[length - 2]) == extension[2] &&
         tolower((unsigned char)input[length - 1]) == extension[3])
         length -= 4;
-    const char *suffix = module == ENGINE ? ".patched.exe" : ".patched.dll";
+    const char *suffix = executable ? ".patched.exe" : ".patched.dll";
     char *result = malloc(length + strlen(suffix) + 1);
     if (result) {
         memcpy(result, input, length);
@@ -72,6 +73,7 @@ static const char *module_name(module_t module)
     case CGAME: return "cgamex86";
     case UI: return "uix86";
     case ENGINE: return "igwarlord";
+    case SERVER: return "igwarlord-server";
     }
     return "unknown";
 }
@@ -91,6 +93,10 @@ static void list_rules(void)
         const code_rule_t *r = code_rules[i];
         printf("%s: %s code %s\n", module_name(r->module),
                r->enabled ? "enabled" : "disabled", r->name);
+    }
+    for (size_t i = 0; i < import_rule_count; ++i) {
+        const import_rule_t *r = import_rules[i];
+        printf("%s: drop import %s (%s)\n", module_name(r->module), r->dll, r->name);
     }
 }
 

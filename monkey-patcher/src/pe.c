@@ -27,6 +27,10 @@ static const profile_t profiles[] = {
     { .module = ENGINE, .name = "igwarlord.exe", .size = 2414080,
       .fingerprint = UINT64_C(0x9637644919c69121),
       .timestamp = 0x4fbeadb4, .image_base = 0x00400000 },
+    /* The dedicated server's own igwarlord.exe, linked from another tree. */
+    { .module = SERVER, .name = "igwarlord-server.exe", .size = 1485312,
+      .fingerprint = UINT64_C(0x3fc347b3d1f74390),
+      .timestamp = 0x4f9ff56d, .image_base = 0x00400000 },
 };
 
 uint16_t get16(const unsigned char *p)
@@ -269,6 +273,186 @@ static bool add_payload(image_t *image)
     return true;
 }
 
+/* Return the header of the section whose virtual range holds rva. */
+static const unsigned char *section_of(const image_t *image, uint32_t rva)
+{
+    for (uint16_t i = 0; i < image->section_count; ++i) {
+        const unsigned char *s = image->data + image->sections + (size_t)i * 40;
+        uint32_t start = get32(s + 12), size = get32(s + 8);
+        if (rva >= start && rva - start < size)
+            return s;
+    }
+    return NULL;
+}
+
+/* Append HIGHLOW base relocations for count consecutive dwords at first.
+ * The blocks go directly behind the existing directory, into zero bytes
+ * that the section holding it already maps, so no header but the
+ * directory size changes. Retail .reloc sections have such slack.
+ */
+static bool add_relocations(image_t *image, uint32_t first, size_t count)
+{
+    unsigned char *opt = image->data + image->optional;
+    uint32_t dir_rva = get32(opt + 136), dir_size = get32(opt + 140);
+    /* One block per page, each at most a header, one entry per slot and
+     * one padding entry.
+     */
+    unsigned char blocks[(8 + 2 * IMPORT_FUNCTIONS_MAX + 2) * IMPORT_FUNCTIONS_MAX];
+    size_t size = 0, block = 0;
+    uint32_t page = 0;
+    if (!count || count > IMPORT_FUNCTIONS_MAX || dir_size % 4) {
+        fprintf(stderr, "Unsupported base relocation directory\n");
+        return false;
+    }
+    for (size_t i = 0; i < count; ++i) {
+        uint32_t rva = first + (uint32_t)i * 4;
+        if (!i || (rva & ~0xfffu) != page) {
+            /* Close the previous block, padded to a dword with an
+             * IMAGE_REL_BASED_ABSOLUTE entry, which the loader skips.
+             */
+            if (i) {
+                if ((size - block) % 4) {
+                    put16(blocks + size, 0);
+                    size += 2;
+                }
+                put32(blocks + block + 4, (uint32_t)(size - block));
+            }
+            page = rva & ~0xfffu;
+            block = size;
+            put32(blocks + size, page);
+            size += 8;
+        }
+        put16(blocks + size, (uint16_t)(0x3000u | (rva & 0xfffu)));
+        size += 2;
+    }
+    if ((size - block) % 4) {
+        put16(blocks + size, 0);
+        size += 2;
+    }
+    put32(blocks + block + 4, (uint32_t)(size - block));
+
+    /* The appended range must lie in the directory's own section, inside
+     * both its virtual and its file-backed size, and be unused.
+     */
+    const unsigned char *section = section_of(image, dir_rva);
+    size_t offset;
+    if (!section || dir_rva > UINT32_MAX - dir_size - size ||
+        dir_rva + dir_size + size > (uint64_t)get32(section + 12) + get32(section + 8) ||
+        !image_offset(image, dir_rva + dir_size, size, &offset)) {
+        fprintf(stderr, "No room for %zu bytes of base relocations\n", size);
+        return false;
+    }
+    for (size_t i = 0; i < size; ++i) {
+        if (image->data[offset + i]) {
+            fprintf(stderr, "Base relocation slack is not empty\n");
+            return false;
+        }
+    }
+    memcpy(image->data + offset, blocks, size);
+    put32(opt + 140, dir_size + (uint32_t)size);
+    return true;
+}
+
+/* Compare a NUL-terminated name in the image to a rule's, ignoring ASCII
+ * case like the Windows loader does for DLL names.
+ */
+static bool same_dll(const image_t *image, uint32_t rva, const char *dll)
+{
+    size_t length = strlen(dll), offset;
+    if (!image_offset(image, rva, length + 1, &offset))
+        return false;
+    for (size_t i = 0; i <= length; ++i) {
+        unsigned char a = image->data[offset + i], b = (unsigned char)dll[i];
+        if (a >= 'A' && a <= 'Z')
+            a = (unsigned char)(a + 'a' - 'A');
+        if (b >= 'A' && b <= 'Z')
+            b = (unsigned char)(b + 'a' - 'A');
+        if (a != b)
+            return false;
+    }
+    return true;
+}
+
+/* Remove one DLL's descriptor from the import directory and bind each of
+ * its IAT slots to a stub that returns 0, so the DLL need not exist.
+ */
+static bool drop_import(image_t *image, const import_rule_t *rule)
+{
+    unsigned char *opt = image->data + image->optional;
+    uint32_t dir_rva = get32(opt + 104), dir_size = get32(opt + 108);
+    size_t dir, count = dir_size / 20, end = count, found = count;
+    if (!image_offset(image, dir_rva, dir_size, &dir) || count < 2)
+        goto invalid;
+    /* The loader stops at the first all-zero descriptor. */
+    for (size_t i = 0; i < count; ++i) {
+        const unsigned char *d = image->data + dir + i * 20;
+        bool zero = true;
+        for (size_t k = 0; k < 20; ++k)
+            zero = zero && !d[k];
+        if (zero) {
+            end = i;
+            break;
+        }
+        if (same_dll(image, get32(d + 12), rule->dll)) {
+            if (found != count)
+                goto invalid;
+            found = i;
+        }
+    }
+    if (end == count || found == count) {
+        fprintf(stderr, "Import of %s not found\n", rule->dll);
+        return false;
+    }
+
+    /* Only unbound descriptors with a separate lookup table qualify, so the
+     * on-disk IAT still names every function and can be checked against it.
+     */
+    unsigned char *d = image->data + dir + found * 20;
+    uint32_t lookup_rva = get32(d), iat_rva = get32(d + 16);
+    size_t lookup, iat, functions = rule->functions;
+    if (!lookup_rva || get32(d + 4) ||
+        !image_offset(image, lookup_rva, (functions + 1) * 4, &lookup) ||
+        !image_offset(image, iat_rva, (functions + 1) * 4, &iat))
+        goto invalid;
+    for (size_t i = 0; i < functions; ++i) {
+        uint32_t entry = get32(image->data + lookup + i * 4);
+        if (!entry || (entry & 0x80000000u) || entry != get32(image->data + iat + i * 4))
+            goto invalid;
+    }
+    if (get32(image->data + lookup + functions * 4) || get32(image->data + iat + functions * 4)) {
+        fprintf(stderr, "%s imports more than %zu functions\n", rule->dll, functions);
+        return false;
+    }
+
+    /* The stub replaces int3 padding in an executable section. */
+    static const unsigned char padding[IMPORT_STUB_SIZE] = { 0xcc, 0xcc, 0xcc };
+    static const unsigned char stub[IMPORT_STUB_SIZE] = { 0x31, 0xc0, 0xc3 };
+    const unsigned char *code = section_of(image, rule->stub_rva);
+    size_t stub_offset;
+    if (!code || !(get32(code + 36) & 0x20000000u) ||
+        !image_offset(image, rule->stub_rva, IMPORT_STUB_SIZE, &stub_offset) ||
+        memcmp(image->data + stub_offset, padding, IMPORT_STUB_SIZE)) {
+        fprintf(stderr, "Unexpected bytes for the %s stub at RVA 0x%08" PRIx32 "\n",
+                rule->dll, rule->stub_rva);
+        return false;
+    }
+    if (!add_relocations(image, iat_rva, functions))
+        return false;
+    memcpy(image->data + stub_offset, stub, IMPORT_STUB_SIZE);
+    for (size_t i = 0; i < functions; ++i)
+        put32(image->data + iat + i * 4, image->profile->image_base + rule->stub_rva);
+
+    /* Close the gap. This moves the all-zero terminator up by one
+     * descriptor; its old position stays zero.
+     */
+    memmove(d, d + 20, (end - found) * 20);
+    put32(opt + 108, dir_size - 20);
+    return true;
+invalid:
+    fprintf(stderr, "Unexpected import directory for %s\n", rule->dll);
+    return false;
+}
+
 /* PE checksum: fold 16-bit words, skip the checksum field, add file length. */
 static void update_checksum(image_t *image)
 {
@@ -306,6 +490,19 @@ bool image_patch(image_t *image)
             continue;
         printf("  %s %s = \"%s\"\n", r->mode == CVAR_FORCE ? "force" : "default", r->name, r->value);
         has_payload = true;
+        ++changes;
+    }
+    /* Drop imports first: the payload section would follow .reloc, whose
+     * slack takes the stubs' base relocations.
+     */
+    for (size_t i = 0; i < import_rule_count; ++i) {
+        const import_rule_t *r = import_rules[i];
+        if (r->module != p->module)
+            continue;
+        if (!drop_import(image, r))
+            return false;
+        printf("  import %s dropped, %zu functions -> stub 0x%08" PRIx32 ": %s\n",
+               r->dll, r->functions, r->stub_rva, r->name);
         ++changes;
     }
     if (has_payload && !add_payload(image))
