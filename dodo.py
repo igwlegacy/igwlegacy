@@ -30,6 +30,9 @@ DIST_EXE_NAME = "igwlegacy.exe"
 # The dedicated server keeps its name in the server directory of an IGW
 # installation.
 DIST_SERVER_EXE = Path("server", "igwarlord.exe")
+# The dedicated server loads the server-side game logic from its own base
+# directory, so it gets a copy of the patched gamex86.dll as well.
+DIST_SERVER_GAME_DLL = Path("server", "base", "gamex86.dll")
 # The game loads PK3s from its base game directory, like the DLLs.
 DIST_PK3 = DIST / "base" / "zzzigwlegacy.pk3"
 ASSET_BUILD = ROOT / "build" / "assets"
@@ -229,6 +232,9 @@ def _assemble_dist():
             target = staging / _dist_path(binary)
             target.parent.mkdir(parents=True, exist_ok=True)
             (staging / binary.name).replace(target)
+        server_game_dll = staging / DIST_SERVER_GAME_DLL
+        server_game_dll.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(staging / "base" / "gamex86.dll", server_game_dll)
         if DIST.exists():
             shutil.rmtree(DIST)
         staging.replace(DIST)
@@ -281,7 +287,8 @@ def task_dist():
 
     The PK3 and the patched DLLs go to dist/base/, the client executable
     to dist/igwlegacy.exe and the dedicated server's to
-    dist/server/igwarlord.exe.
+    dist/server/igwarlord.exe, next to a copy of the patched gamex86.dll
+    in dist/server/base/.
     """
     gamedir = _gamedir_sources()
     return {
@@ -294,7 +301,7 @@ def task_dist():
         + list(map(str, INPUT_BINARIES))
         + [str(ASSET_BUILD / name) for name in GENERATED_ASSETS]
         + [str(path) for path in gamedir.values() if path.is_file()],
-        "targets": [str(DIST_PK3)]
+        "targets": [str(DIST_PK3), str(DIST / DIST_SERVER_GAME_DLL)]
         + [str(DIST / _dist_path(path)) for path in INPUT_BINARIES],
         # File dependencies alone miss removed files and empty directories,
         # which also change the PK3, so track the entry names as well.
