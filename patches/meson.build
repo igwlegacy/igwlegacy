@@ -11,6 +11,7 @@ patch_sources = [git_version] + files(
 	'disable_bobbing.c',
 	'fog.c',
 	'maxfps.c',
+	'net_defaults.c',
 	# 'ambient_sounds.c',
 	'screen_shake.c',
 	'damage_kick.c',
