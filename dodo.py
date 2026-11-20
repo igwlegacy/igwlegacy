@@ -35,6 +35,12 @@ DIST_SERVER_EXE = Path("server", "igwarlord.exe")
 DIST_SERVER_GAME_DLL = Path("server", "base", "gamex86.dll")
 # The game loads PK3s from its base game directory, like the DLLs.
 DIST_PK3 = DIST / "base" / "zzzigwlegacy.pk3"
+# The dedicated server reads the weapon scripts and default.cfg from the
+# PK3 too, and only searches its own base directory.
+DIST_SERVER_PK3 = Path("server", "base", DIST_PK3.name)
+# Files copied as they are into dist/server/, e.g. the start script and
+# server.cfg (replacing the stock one in an installation).
+SERVERDIR = ROOT / "serverdir"
 ASSET_BUILD = ROOT / "build" / "assets"
 # Use None for the size to convert formats while preserving source dimensions.
 TEXTURE_RULES = {
@@ -201,6 +207,15 @@ def _package_gamedir(output):
             )
 
 
+def _serverdir_sources():
+    """Map paths below dist/server/ to their files in serverdir."""
+    return {
+        Path("server", source.relative_to(SERVERDIR)): source
+        for source in sorted(SERVERDIR.rglob("*"))
+        if source.is_file()
+    }
+
+
 def _dist_path(binary):
     """Return where a patched binary goes below dist/."""
     # The DLLs belong in the base game directory, the executable stays at
@@ -235,6 +250,12 @@ def _assemble_dist():
         server_game_dll = staging / DIST_SERVER_GAME_DLL
         server_game_dll.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(staging / "base" / "gamex86.dll", server_game_dll)
+        shutil.copy2(pk3, staging / DIST_SERVER_PK3)
+        # copy2 keeps the mode, so start-server.sh stays executable.
+        for path, source in _serverdir_sources().items():
+            target = staging / path
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source, target)
         if DIST.exists():
             shutil.rmtree(DIST)
         staging.replace(DIST)
@@ -287,10 +308,11 @@ def task_dist():
 
     The PK3 and the patched DLLs go to dist/base/, the client executable
     to dist/igwlegacy.exe and the dedicated server's to
-    dist/server/igwarlord.exe, next to a copy of the patched gamex86.dll
-    in dist/server/base/.
+    dist/server/igwarlord.exe, next to copies of the patched gamex86.dll
+    and the PK3 in dist/server/base/ and the files of serverdir.
     """
     gamedir = _gamedir_sources()
+    serverdir = _serverdir_sources()
     return {
         "actions": [_assemble_dist],
         "task_dep": ["monkey_patcher", "textures", "models"],
@@ -300,10 +322,24 @@ def task_dist():
         "file_dep": [str(ROOT / "dodo.py"), str(PATCHER)]
         + list(map(str, INPUT_BINARIES))
         + [str(ASSET_BUILD / name) for name in GENERATED_ASSETS]
-        + [str(path) for path in gamedir.values() if path.is_file()],
-        "targets": [str(DIST_PK3), str(DIST / DIST_SERVER_GAME_DLL)]
-        + [str(DIST / _dist_path(path)) for path in INPUT_BINARIES],
+        + [str(path) for path in gamedir.values() if path.is_file()]
+        + [str(source) for source in serverdir.values()],
+        "targets": [
+            str(DIST_PK3),
+            str(DIST / DIST_SERVER_GAME_DLL),
+            str(DIST / DIST_SERVER_PK3),
+        ]
+        + [str(DIST / _dist_path(path)) for path in INPUT_BINARIES]
+        + [str(DIST / path) for path in serverdir],
         # File dependencies alone miss removed files and empty directories,
-        # which also change the PK3, so track the entry names as well.
-        "uptodate": [config_changed({"gamedir": sorted(gamedir)})],
+        # which also change the PK3 or dist/server/, so track the entry
+        # names as well.
+        "uptodate": [
+            config_changed(
+                {
+                    "gamedir": sorted(gamedir),
+                    "serverdir": sorted(map(str, serverdir)),
+                }
+            )
+        ],
     }

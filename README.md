@@ -17,8 +17,10 @@ pixi run build
 
 The output in `./dist/` mirrors an IGW installation: the patched
 `igwarlord.exe` as `igwlegacy.exe` at the top, the patched dedicated server
-as `server/igwarlord.exe` with a copy of the patched `gamex86.dll` in
-`server/base/`, and `base/` with
+as `server/igwarlord.exe` with copies of the patched `gamex86.dll` and
+the PK3 in `server/base/` and the contents of `./serverdir/` (the
+`start-server.sh` wine launcher and a `server.cfg` with dead master
+servers removed and netcode settings), and `base/` with
 `gamex86.dll`, `cgamex86.dll`, `uix86.dll`, and
 `igwlegacy.pk3`, a plain ZIP archive of the contents of `./gamedir/`
 plus the assets generated from `./raw-assets/`: textures converted with
