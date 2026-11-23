@@ -34,6 +34,7 @@ patch_sources = [git_version] + files(
 	'damage_kick.c',
 	'burning_screen.c',
 	'landing_dip.c',
+	'landing_bounce.c',
 	'reverse_weapon_anims.c',
 	'death_camera.c',
 	'respawn_countdown.c',
