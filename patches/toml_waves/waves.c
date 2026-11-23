@@ -78,10 +78,13 @@ static void fail(const toml_datum_t *where, const char *format, ...)
     __builtin_unreachable();
 }
 
-static void unknown(const char *section, const char *key)
+/* Unknown keys are most likely typos, which would otherwise silently fall
+ * back to a default, so they stop the map like any other invalid script.
+ */
+__attribute__((noreturn))
+static void unknown(const toml_datum_t *where, const char *section, const char *key)
 {
-    print("^3WARNING: %s: unknown key %s%s%s, ignored\n", loading,
-          section ? section : "", section ? "." : "", key);
+    fail(where, "unknown key %s%s%s", section ? section : "", section ? "." : "", key);
 }
 
 static bool is(const char *key, const char *name)
@@ -278,7 +281,7 @@ static void parse_max_counts(const toml_datum_t *t)
             int v = to_int(d, key);
             GAME(int, GAME_MAX_COMMANDOS) = v < 100 ? v : 100;
         } else {
-            unknown("MAXCOUNTS", key);
+            unknown(d, "MAXCOUNTS", key);
         }
     }
 }
@@ -311,7 +314,7 @@ static void parse_wave_settings(const toml_datum_t *t)
             current = d;
             for_routes(d, key, add_lose_route, NULL);
         } else {
-            unknown("WAVESETTINGS", key);
+            unknown(d, "WAVESETTINGS", key);
         }
     }
 }
@@ -359,7 +362,7 @@ static void parse_ai_settings(const toml_datum_t *t)
         } else if (is(key, "DM_CIVS")) {
             GAME(int, GAME_DM_CIVS) = to_int(d, key);
         } else {
-            unknown("AI_SETTINGS", key);
+            unknown(d, "AI_SETTINGS", key);
         }
     }
 }
@@ -391,7 +394,7 @@ static spot_t parse_spot(const toml_datum_t *t, const char *section, bool lift,
         else if (has_intensity && is(key, "intensity"))
             spot.intensity = (float)to_double(d, key);
         else
-            unknown(section, key);
+            unknown(d, section, key);
     }
     return spot;
 }
@@ -481,7 +484,7 @@ static void parse_spot_list(const toml_datum_t *t, const char *section,
         if (is(t->u.tab.key[i], "spot"))
             for_tables(&t->u.tab.value[i], section, add);
         else
-            unknown(section, t->u.tab.key[i]);
+            unknown(&t->u.tab.value[i], section, t->u.tab.key[i]);
     }
 }
 
@@ -530,7 +533,7 @@ static void add_wave(const toml_datum_t *t, const char *section)
                 fail(d, "size must be 0, 1 or 2");
             sizes[num_waves] = (unsigned char)size;
         } else {
-            unknown(section, key);
+            unknown(d, section, key);
         }
     }
     if (!has_startup)
@@ -571,7 +574,7 @@ static void parse_document(const toml_datum_t *top)
         } else if (is(key, "rocketspot")) {
             for_tables(d, key, add_rocket_spot);
         } else {
-            unknown(NULL, key);
+            unknown(d, NULL, key);
         }
     }
 }
