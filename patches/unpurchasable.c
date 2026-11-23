@@ -1,8 +1,5 @@
 #include "patches.h"
 
-#include <stdio.h>
-#include <string.h>
-
 /* Anything priced at UNPURCHASABLE or more by the skill config cannot be
  * bought: weapons (sk_weapcost_*), player upgrades (sk_upgrade_*), RTS
  * structures (sk_cost_*) and structure upgrades. The client greys those
@@ -34,10 +31,12 @@
 
 _Static_assert(UNPURCHASABLE > 9999u, "money reaches up to 9999");
 
-enum { EAX, ECX, EDX, EBX, ESP, EBP, ESI, EDI };
-
 /* Both modules keep a vmCvar_t's integer at +0xc, its stride 0x110. */
 #define CVAR_SIZE 0x110u
+
+/* The cgame helpers take about 3.5 KiB, the game ones much less. */
+#define RESERVE 8192u
+
 /* Retail cgame buttons: 0x54c bytes, their text at +0x8c, their state at
  * +0x510; disabled is 1, pressed or owned 3.
  */
@@ -97,64 +96,6 @@ static code_rule_t patch_unpurchasable_cgame_hooks[] = {
       { 0x51, 0x8b, 0x44, 0x24, 0x08 }, { 0xe9, 0, 0, 0, 0 } },
 };
 
-static uint32_t append(payload_t *payload, const void *bytes, size_t size)
-{
-    uint32_t at = (uint32_t)payload->size;
-    memcpy(payload->data + at, bytes, size);
-    payload->size += size;
-    return at;
-}
-
-#define EMIT(...) append(payload, (const unsigned char[]){ __VA_ARGS__ }, \
-                         sizeof((const unsigned char[]){ __VA_ARGS__ }))
-
-/* Relative branches from the payload, at section RVA rva, to the image. */
-static void jump(payload_t *payload, uint32_t rva, uint32_t target)
-{
-    uint32_t at = (uint32_t)payload->size;
-    EMIT(0xe9, B4(target - (rva + at + 5u)));
-}
-
-static void call(payload_t *payload, uint32_t rva, uint32_t target)
-{
-    uint32_t at = (uint32_t)payload->size;
-    EMIT(0xe8, B4(target - (rva + at + 5u)));
-}
-
-/* A short forward branch, resolved by land() at its destination. */
-static uint32_t skip_if(payload_t *payload, unsigned char condition)
-{
-    return EMIT(condition, 0);
-}
-
-static void land(payload_t *payload, uint32_t branch)
-{
-    payload->data[branch + 1] = (unsigned char)(payload->size - (branch + 2u));
-}
-
-/* call $+5; pop reg: reg holds the runtime address of the returned RVA. */
-static uint32_t anchor(payload_t *payload, uint32_t rva, unsigned reg)
-{
-    EMIT(0xe8, 0, 0, 0, 0, (unsigned char)(0x58 + reg));
-    return rva + (uint32_t)payload->size - 1u;
-}
-
-static bool reserve(const payload_t *payload)
-{
-    /* The cgame helpers take about 3.5 KiB, the game ones much less. */
-    if (payload->size > PAYLOAD_MAX - 8192) {
-        fputs("Unpurchasable payload exceeds its size limit\n", stderr);
-        return false;
-    }
-    return true;
-}
-
-static void resolve(code_rule_t *hooks, size_t count, const uint32_t *targets, uint32_t rva)
-{
-    for (size_t i = 0; i < count; ++i)
-        put32(hooks[i].replacement + 1, rva + targets[i] - (hooks[i].rva + 5u));
-}
-
 /* Replaces the prologue of G_CannotBuy*: true when the mask asks for an
  * item the client does not own yet whose price is UNPURCHASABLE or more,
  * else the retail check. owned is the gclient_t offset of the owned items'
@@ -170,23 +111,23 @@ static uint32_t refuse(payload_t *payload, uint32_t rva, uint32_t owned, uint32_
     EMIT(0xf7, 0xd0,                        /* not eax */
          0x23, 0x44, 0x24, 0x04);           /* and eax,[esp+4]: to buy */
     EMIT(0x56);                             /* push esi */
-    uint32_t base = anchor(payload, rva, ESI);
+    uint32_t base = emit_anchor(payload, rva, ESI);
     EMIT(0x8d, 0xb6, B4(costs - base));     /* lea esi,[esi+costs] */
     EMIT(0xba, B4(count));                  /* mov edx,count */
     uint32_t loop = (uint32_t)payload->size;
     EMIT(0xd1, 0xe8);                       /* shr eax,1: the next bit */
-    uint32_t kept = skip_if(payload, 0x73); /* jnc next */
+    uint32_t kept = emit_skip_if(payload, 0x73); /* jnc next */
     EMIT(0x81, 0x3e, B4(UNPURCHASABLE));    /* cmp dword [esi],limit */
-    uint32_t refused = skip_if(payload, 0x7d); /* jge refused */
-    land(payload, kept);
+    uint32_t refused = emit_skip_if(payload, 0x7d); /* jge refused */
+    emit_land(payload, kept);
     EMIT(0x81, 0xc6, B4(CVAR_SIZE),         /* next: add esi,stride */
          0x4a);                             /* dec edx */
     EMIT(0x75, (unsigned char)(loop - (payload->size + 2u))); /* jnz loop */
     EMIT(0x5e);                             /* pop esi */
     EMIT(0x83, 0xec, frame,                 /* the replaced prologue */
          0x8b, 0x89, B4(0x28cu));
-    jump(payload, rva, back);
-    land(payload, refused);
+    emit_jump(payload, rva, back);
+    emit_land(payload, refused);
     EMIT(0x5e,                              /* pop esi */
          0xb8, B4(1u),                      /* mov eax,1 */
          0xc3);                             /* ret */
@@ -195,11 +136,9 @@ static uint32_t refuse(payload_t *payload, uint32_t rva, uint32_t owned, uint32_
 
 static bool build_game(payload_t *payload, uint32_t rva, uint32_t next, uint32_t *entry)
 {
-    if (!reserve(payload))
+    if (!payload_reserve(payload, RESERVE, "Unpurchasable"))
         return false;
-    *entry = (uint32_t)payload->size;
-    /* Syscalls pass through; next is a payload offset, not an image RVA. */
-    EMIT(0xe9, B4(next - (*entry + 5u)));
+    *entry = emit_entry(payload, next);
 
     /* gclient_t's pers.upgrades and pers.weapons; sk_upgrade[12] and
      * sk_weapcost[9], as G_CannotBuy* walk them.
@@ -210,7 +149,7 @@ static bool build_game(payload_t *payload, uint32_t rva, uint32_t next, uint32_t
     };
     _Static_assert(ARRAY_SIZE(targets) == ARRAY_SIZE(patch_unpurchasable_game_hooks),
                    "every GAME hook needs a helper");
-    resolve(patch_unpurchasable_game_hooks, ARRAY_SIZE(targets), targets, rva);
+    resolve_hooks(patch_unpurchasable_game_hooks, ARRAY_SIZE(targets), targets, rva);
     return true;
 }
 
@@ -246,21 +185,21 @@ static void grey_items(payload_t *payload, uint32_t base, const items_t *items)
         if (chained && i % 4)
             EMIT(0x09, 0xc8);               /* or eax,ecx: tier below */
         EMIT(0x83, 0xba, B4(state), OWNED_STATE); /* cmp dword [edx+state],owned */
-        uint32_t not_owned = skip_if(payload, 0x75); /* jne */
+        uint32_t not_owned = emit_skip_if(payload, 0x75); /* jne */
         EMIT(0x31, 0xc0);                   /* xor eax,eax: owned stays */
-        land(payload, not_owned);
+        emit_land(payload, not_owned);
         if (chained)
             EMIT(0x89, 0xc1);               /* mov ecx,eax */
         EMIT(0x85, 0xc0);                   /* test eax,eax */
-        uint32_t buyable = skip_if(payload, 0x74); /* jz */
+        uint32_t buyable = emit_skip_if(payload, 0x74); /* jz */
         EMIT(0xc7, 0x82, B4(state), B4(UNPURCHASABLE_STATE));
-        uint32_t done = skip_if(payload, 0xeb); /* jmp */
-        land(payload, buyable);
+        uint32_t done = emit_skip_if(payload, 0xeb); /* jmp */
+        emit_land(payload, buyable);
         EMIT(0x83, 0xba, B4(state), UNPURCHASABLE_STATE); /* cmp dword [edx+state],4 */
-        uint32_t kept = skip_if(payload, 0x75); /* jne */
+        uint32_t kept = emit_skip_if(payload, 0x75); /* jne */
         EMIT(0xc7, 0x82, B4(state), B4(DISABLED_STATE));
-        land(payload, kept);
-        land(payload, done);
+        emit_land(payload, kept);
+        emit_land(payload, done);
     }
 }
 
@@ -268,7 +207,7 @@ static void grey_items(payload_t *payload, uint32_t base, const items_t *items)
 static uint32_t begin_menu(payload_t *payload, uint32_t rva, unsigned reg)
 {
     EMIT(0x60);                             /* pushad */
-    uint32_t base = anchor(payload, rva, ESI);
+    uint32_t base = emit_anchor(payload, rva, ESI);
     EMIT(0x89, (unsigned char)(0xc0 | reg << 3 | EDX)); /* mov edx,reg */
     return base;
 }
@@ -296,31 +235,29 @@ static void hide_structure_prices(payload_t *payload, uint32_t rva, uint32_t bas
         uint32_t cost = STRUCTURE_COSTS + i * CVAR_SIZE - base;
         uint32_t text = 0x1e8u + i * BUTTON_SIZE + BUTTON_TEXT;
         EMIT(0x81, 0xbe, B4(cost), B4(UNPURCHASABLE)); /* cmp dword [esi+cost],limit */
-        uint32_t buyable = skip_if(payload, 0x7c); /* jl */
+        uint32_t buyable = emit_skip_if(payload, 0x7c); /* jl */
         EMIT(0xc6, 0x83, B4(text), 0);      /* mov byte [ebx+text],0 */
-        uint32_t done = skip_if(payload, 0xeb); /* jmp */
-        land(payload, buyable);
+        uint32_t done = emit_skip_if(payload, 0xeb); /* jmp */
+        emit_land(payload, buyable);
         EMIT(0x80, 0xbb, B4(text), 0);      /* cmp byte [ebx+text],0 */
-        uint32_t shown = skip_if(payload, 0x75); /* jne */
+        uint32_t shown = emit_skip_if(payload, 0x75); /* jne */
         EMIT(0xff, 0xb6, B4(cost));         /* push dword [esi+cost] */
         EMIT(0x8d, 0x86, B4(PRICE_FORMAT - base), /* lea eax,[esi+format] */
              0x50);                         /* push eax */
         EMIT(0x8d, 0x93, B4(text));         /* lea edx,[ebx+text] */
         EMIT(0xb9, B4(0x400u));             /* mov ecx,sizeof(text) */
-        call(payload, rva, COM_SPRINTF);
+        emit_call(payload, rva, COM_SPRINTF);
         EMIT(0x83, 0xc4, 0x08);             /* add esp,8 */
-        land(payload, shown);
-        land(payload, done);
+        emit_land(payload, shown);
+        emit_land(payload, done);
     }
 }
 
 static bool build_cgame(payload_t *payload, uint32_t rva, uint32_t next, uint32_t *entry)
 {
-    if (!reserve(payload))
+    if (!payload_reserve(payload, RESERVE, "Unpurchasable"))
         return false;
-    *entry = (uint32_t)payload->size;
-    /* Syscalls pass through; next is a payload offset, not an image RVA. */
-    EMIT(0xe9, B4(next - (*entry + 5u)));
+    *entry = emit_entry(payload, next);
 
     /* In-game shop: call the retail refresh with the same argument
      * through a copy of its first instructions, then grey out.
@@ -330,7 +267,7 @@ static bool build_cgame(payload_t *payload, uint32_t rva, uint32_t next, uint32_
     uint32_t refresh = EMIT(0xe8, 0, 0, 0, 0); /* call retail */
     EMIT(0x83, 0xc4, 0x04);                 /* add esp,4 */
     EMIT(0x60);                             /* pushad */
-    uint32_t base = anchor(payload, rva, ESI);
+    uint32_t base = emit_anchor(payload, rva, ESI);
     EMIT(0x8b, 0x54, 0x24, 0x24);           /* mov edx,[esp+0x24]: menu */
     const items_t shop_weapons = { WEAPON_COSTS, 9, 0x570u + BUTTON_STATE, false };
     const items_t shop_upgrades = { UPGRADE_COSTS, 12, 0x6120u + BUTTON_STATE, true };
@@ -339,7 +276,7 @@ static bool build_cgame(payload_t *payload, uint32_t rva, uint32_t next, uint32_
     EMIT(0x61, 0xc3);                       /* popad; ret */
     put32(payload->data + refresh + 1, (uint32_t)payload->size - (refresh + 5u));
     EMIT(0x51, 0x8b, 0x54, 0x24, 0x08);     /* retail: push ecx; mov edx,[esp+8] */
-    jump(payload, rva, 0x56a85u);
+    emit_jump(payload, rva, 0x56a85u);
 
     /* Spawn upgrade page, at its refresh's epilogue. */
     uint32_t upgrade_page = (uint32_t)payload->size;
@@ -348,7 +285,7 @@ static bool build_cgame(payload_t *payload, uint32_t rva, uint32_t next, uint32_
     grey_items(payload, base, &page_upgrades);
     EMIT(0x61);                             /* popad */
     EMIT(0x8b, 0x4c, 0x24, 0x24, 0x5f);     /* retail: mov ecx,[esp+0x24]; pop edi */
-    jump(payload, rva, 0x531ffu);
+    emit_jump(payload, rva, 0x531ffu);
 
     /* Spawn weapon page. Its 12 slots read the 9 weapon prices and the 3
      * cvars after them, while the server only sells bits 0-8 at those 9
@@ -360,17 +297,17 @@ static bool build_cgame(payload_t *payload, uint32_t rva, uint32_t next, uint32_
     grey_items(payload, base, &page_weapons);
     EMIT(0x61);                             /* popad */
     EMIT(0x8b, 0x4c, 0x24, 0x14, 0x5b);     /* retail: mov ecx,[esp+0x14]; pop ebx */
-    jump(payload, rva, 0x5121du);
+    emit_jump(payload, rva, 0x5121du);
 
     /* RTS build buttons build1-7, already disabled (grey) while the
      * structure costs more than the money.
      */
     uint32_t structures = (uint32_t)payload->size;
     EMIT(0x60);                             /* pushad */
-    base = anchor(payload, rva, ESI);
+    base = emit_anchor(payload, rva, ESI);
     hide_structure_prices(payload, rva, base);
     EMIT(0x61);                             /* popad */
-    jump(payload, rva, 0x47820u);           /* the replaced call's target */
+    emit_jump(payload, rva, 0x47820u);           /* the replaced call's target */
 
     /* RTS structure panel: its upgrade button is already disabled (grey)
      * while the selected structure's next level costs more than the
@@ -381,12 +318,12 @@ static bool build_cgame(payload_t *payload, uint32_t rva, uint32_t next, uint32_
      * the next level in ecx, or -1 when there is none.
      */
     uint32_t panel = (uint32_t)payload->size;
-    call(payload, rva, 0x71490u);
+    emit_call(payload, rva, 0x71490u);
     EMIT(0x60);                             /* pushad */
-    base = anchor(payload, rva, ESI);
+    base = emit_anchor(payload, rva, ESI);
     EMIT(0x8b, 0x86, B4(0xda02f4u - base)); /* mov eax,[esi+selected] */
     EMIT(0x85, 0xc0);                       /* test eax,eax */
-    uint32_t none = skip_if(payload, 0x74); /* jz done */
+    uint32_t none = emit_skip_if(payload, 0x74); /* jz done */
     EMIT(0x69, 0xc0, B4(0x420u));           /* imul eax,eax,sizeof(centity_t) */
     EMIT(0x8b, 0x84, 0x06,                  /* mov eax,[esi+eax+state] */
          B4(0xda14c0u + 0xf0u - base));
@@ -395,12 +332,12 @@ static bool build_cgame(payload_t *payload, uint32_t rva, uint32_t next, uint32_
          0x41,                              /* inc ecx */
          0xc1, 0xe8, 0x04,                  /* shr eax,4 */
          0x83, 0xe0, 0x0f);                 /* and eax,0xf: type */
-    call(payload, rva, 0x71460u);
+    emit_call(payload, rva, 0x71460u);
     EMIT(0x3d, B4(UNPURCHASABLE));          /* cmp eax,limit */
-    uint32_t affordable = skip_if(payload, 0x7c); /* jl done */
+    uint32_t affordable = emit_skip_if(payload, 0x7c); /* jl done */
     EMIT(0xc6, 0x87, B4(0x3194u + BUTTON_TEXT), 0); /* mov byte [edi+text],0 */
-    land(payload, none);
-    land(payload, affordable);
+    emit_land(payload, none);
+    emit_land(payload, affordable);
     EMIT(0x61, 0xc3);                       /* popad; ret */
 
     /* Button draw: an UNPURCHASABLE_STATE button is drawn as GREY_FRAME
@@ -411,7 +348,7 @@ static bool build_cgame(payload_t *payload, uint32_t rva, uint32_t next, uint32_
     uint32_t draw = (uint32_t)payload->size;
     EMIT(0x8b, 0x44, 0x24, 0x04);           /* mov eax,[esp+4] */
     EMIT(0x81, 0xb8, B4(BUTTON_STATE), B4(UNPURCHASABLE_STATE)); /* cmp [eax+state],4 */
-    uint32_t plain = skip_if(payload, 0x75); /* jne retail */
+    uint32_t plain = emit_skip_if(payload, 0x75); /* jne retail */
     EMIT(0xc7, 0x80, B4(BUTTON_STATE), B4(GREY_FRAME)); /* mov [eax+state],grey */
     EMIT(0x50, 0x50);                       /* push eax; push eax */
     uint32_t drawn = EMIT(0xe8, 0, 0, 0, 0); /* call retail */
@@ -419,15 +356,15 @@ static bool build_cgame(payload_t *payload, uint32_t rva, uint32_t next, uint32_
          0x58);                             /* pop eax */
     EMIT(0xc7, 0x80, B4(BUTTON_STATE), B4(UNPURCHASABLE_STATE));
     EMIT(0xc3);                             /* ret */
-    land(payload, plain);
+    emit_land(payload, plain);
     put32(payload->data + drawn + 1, (uint32_t)payload->size - (drawn + 5u));
     EMIT(0x51, 0x8b, 0x44, 0x24, 0x08);     /* retail: push ecx; mov eax,[esp+8] */
-    jump(payload, rva, 0x59525u);
+    emit_jump(payload, rva, 0x59525u);
 
     const uint32_t targets[] = { shop, upgrade_page, weapon_page, structures, panel, panel, draw };
     _Static_assert(ARRAY_SIZE(targets) == ARRAY_SIZE(patch_unpurchasable_cgame_hooks),
                    "every CGAME hook needs a helper");
-    resolve(patch_unpurchasable_cgame_hooks, ARRAY_SIZE(targets), targets, rva);
+    resolve_hooks(patch_unpurchasable_cgame_hooks, ARRAY_SIZE(targets), targets, rva);
     return true;
 }
 

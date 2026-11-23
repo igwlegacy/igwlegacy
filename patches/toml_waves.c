@@ -1,9 +1,6 @@
 #include "patches.h"
 #include "toml_waves_blob.h"
 
-#include <stdio.h>
-#include <string.h>
-
 /* TOML wave scripts: scripts/waves/<map>-<level>.toml takes precedence over
  * the .xml of the same name. The parser and the sequential wave scheduler
  * are C, built by toml_waves/blob.py into a self-relocating blob around the
@@ -27,45 +24,17 @@ static code_rule_t patch_toml_waves_hooks[] = {
       { 0xe8, B4(0x6d340u - 0x6d7c8u) }, { 0xe8, 0, 0, 0, 0 } },
 };
 
-static uint32_t append(payload_t *payload, const void *bytes, size_t size)
-{
-    uint32_t at = (uint32_t)payload->size;
-    memcpy(payload->data + at, bytes, size);
-    payload->size += size;
-    return at;
-}
-
-#define EMIT(...) append(payload, (const unsigned char[]){ __VA_ARGS__ }, \
-                         sizeof((const unsigned char[]){ __VA_ARGS__ }))
-
-/* Relative branches from the payload, at section RVA rva, to image RVAs. */
-static void jump(payload_t *payload, uint32_t rva, uint32_t target)
-{
-    uint32_t at = (uint32_t)payload->size;
-    EMIT(0xe9, B4(target - (rva + at + 5u)));
-}
-
-static void call(payload_t *payload, uint32_t rva, uint32_t target)
-{
-    uint32_t at = (uint32_t)payload->size;
-    EMIT(0xe8, B4(target - (rva + at + 5u)));
-}
-
 static bool build_game(payload_t *payload, uint32_t rva, uint32_t next, uint32_t *entry)
 {
     /* The blob, its alignment and the two short stubs below. */
-    if (payload->size + sizeof(toml_waves_blob) + 128 > PAYLOAD_MAX) {
-        fputs("TOML waves payload exceeds its size limit\n", stderr);
+    if (!payload_reserve(payload, sizeof(toml_waves_blob) + 128, "TOML waves"))
         return false;
-    }
-    *entry = (uint32_t)payload->size;
-    /* Syscalls pass through; next is a payload offset, not an image RVA. */
-    EMIT(0xe9, B4(next - (*entry + 5u)));
+    *entry = emit_entry(payload, next);
 
     /* Its doubles and tables prefer some alignment; int3 fills the gap. */
     while (payload->size % 16)
         EMIT(0xcc);
-    uint32_t blob = append(payload, toml_waves_blob, sizeof(toml_waves_blob));
+    uint32_t blob = payload_append(payload, toml_waves_blob, sizeof(toml_waves_blob));
     put32(payload->data + blob + TOML_WAVES_HEADER_RVA, rva + blob);
 
     /* eax = toml_waves_load(edi). -1 replays the replaced prologue and
@@ -73,21 +42,21 @@ static bool build_game(payload_t *payload, uint32_t rva, uint32_t next, uint32_t
      */
     uint32_t load = (uint32_t)payload->size;
     EMIT(0x57);                             /* push edi */
-    call(payload, rva, rva + blob + TOML_WAVES_LOAD);
+    emit_call(payload, rva, rva + blob + TOML_WAVES_LOAD);
     EMIT(0x83, 0xc4, 0x04,                  /* add esp,4 */
          0x83, 0xf8, 0xff,                  /* cmp eax,-1 */
          0x74, 0x01,                        /* je xml */
          0xc3,                              /* ret */
          0x55, 0x8b, 0xec, 0x83, 0xe4, 0xf8); /* xml: the prologue */
-    jump(payload, rva, 0x64736u);
+    emit_jump(payload, rva, 0x64736u);
 
     /* Spawn the roamers as before; when toml_waves_run() has handled the
      * waves, return from G_RunWaves itself: drop this call's return address
      * and undo its push ecx.
      */
     uint32_t run = (uint32_t)payload->size;
-    call(payload, rva, 0x6d340u);           /* G_SpawnRoamers */
-    call(payload, rva, rva + blob + TOML_WAVES_RUN);
+    emit_call(payload, rva, 0x6d340u);           /* G_SpawnRoamers */
+    emit_call(payload, rva, rva + blob + TOML_WAVES_RUN);
     EMIT(0x85, 0xc0,                        /* test eax,eax */
          0x75, 0x01,                        /* jne handled */
          0xc3,                              /* ret: the XML scheduler */
@@ -95,8 +64,8 @@ static bool build_game(payload_t *payload, uint32_t rva, uint32_t next, uint32_t
          0x59,                              /* pop ecx */
          0xc3);                             /* ret */
 
-    put32(patch_toml_waves_hooks[0].replacement + 1, rva + load - (0x64730u + 5u));
-    put32(patch_toml_waves_hooks[1].replacement + 1, rva + run - (0x6d7c3u + 5u));
+    const uint32_t targets[] = { load, run };
+    resolve_hooks(patch_toml_waves_hooks, ARRAY_SIZE(targets), targets, rva);
     return true;
 }
 

@@ -1,8 +1,5 @@
 #include "patches.h"
 
-#include <stdio.h>
-#include <string.h>
-
 /* PRIMORDIAL is difficulty 5, one level past god. Like the retail levels
  * 0-4 (easy, medium, hard, brute, god), it consists of two files in the
  * game's search path: skill-p.cfg, which both the server and the client
@@ -20,7 +17,8 @@
  * that a base relocation covers, so the DLLs still rebase correctly.
  */
 
-enum { EAX, ECX, EDX, EBX, ESP, EBP, ESI, EDI };
+/* Strings and helpers take about 250 bytes per module. */
+#define RESERVE 512u
 
 /* Hook replacements receive their rel32 once the payload has a known RVA. */
 static code_rule_t patch_primordial_game_hooks[] = {
@@ -220,133 +218,55 @@ static const address_rule_t patch_primordial_ui_names[] = {
     { UI, "primordial: server browser primordial", UI_BROWSER_NAMES + 20, 0, 0x10000000u + UI_BROWSER_PRIM },
 };
 
-static uint32_t append(payload_t *payload, const void *bytes, size_t size)
-{
-    uint32_t at = (uint32_t)payload->size;
-    memcpy(payload->data + at, bytes, size);
-    payload->size += size;
-    return at;
-}
-
-#define EMIT(...) append(payload, (const unsigned char[]){ __VA_ARGS__ }, \
-                         sizeof((const unsigned char[]){ __VA_ARGS__ }))
-
-/* Relative branches from the payload, at section RVA rva, to the image. */
-static void jump(payload_t *payload, uint32_t rva, uint32_t target)
-{
-    uint32_t at = (uint32_t)payload->size;
-    EMIT(0xe9, B4(target - (rva + at + 5u)));
-}
-
-static void jump_if(payload_t *payload, uint32_t rva, unsigned char condition, uint32_t target)
-{
-    uint32_t at = (uint32_t)payload->size;
-    EMIT(0x0f, condition, B4(target - (rva + at + 6u)));
-}
-
-static void call(payload_t *payload, uint32_t rva, uint32_t target)
-{
-    uint32_t at = (uint32_t)payload->size;
-    EMIT(0xe8, B4(target - (rva + at + 5u)));
-}
-
-/* A short forward branch, resolved by land() at its destination. */
-static uint32_t skip_if(payload_t *payload, unsigned char condition)
-{
-    return EMIT(condition, 0);
-}
-
-static void land(payload_t *payload, uint32_t branch)
-{
-    payload->data[branch + 1] = (unsigned char)(payload->size - (branch + 2u));
-}
-
-/* call $+5; pop reg: reg holds the runtime address of the returned RVA. */
-static uint32_t anchor(payload_t *payload, uint32_t rva, unsigned reg)
-{
-    EMIT(0xe8, 0, 0, 0, 0, (unsigned char)(0x58 + reg));
-    return rva + (uint32_t)payload->size - 1u;
-}
-
-/* reg = runtime address of the payload offset at. */
-static void load_address(payload_t *payload, uint32_t rva, unsigned reg, uint32_t at)
-{
-    uint32_t base = anchor(payload, rva, reg);
-    EMIT(0x81, (unsigned char)(0xc0 + reg), B4(rva + at - base));
-}
-
-static uint32_t string(payload_t *payload, const char *text)
-{
-    return append(payload, text, strlen(text) + 1);
-}
-
 /* Replace lea scratch,[edi+edi*4]; lea dst,[scratch*4+0x200b6cf0] with the
  * vote's name for level edi, then continue at back.
  */
 static void vote_name(payload_t *payload, uint32_t rva, unsigned dst, unsigned scratch,
                       uint32_t name, uint32_t back)
 {
-    uint32_t base = anchor(payload, rva, dst);
+    uint32_t base = emit_anchor(payload, rva, dst);
     EMIT(0x83, 0xff, 5);
-    uint32_t primordial = skip_if(payload, 0x74);
+    uint32_t primordial = emit_skip_if(payload, 0x74);
     EMIT(0x8d, (unsigned char)(0x04 | scratch << 3), 0xbf);
     EMIT(0x8d, (unsigned char)(0x84 | dst << 3), (unsigned char)(0x80 | scratch << 3 | dst),
          B4(0xb6cf0u - base));
-    jump(payload, rva, back);
-    land(payload, primordial);
+    emit_jump(payload, rva, back);
+    emit_land(payload, primordial);
     EMIT(0x81, (unsigned char)(0xc0 + dst), B4(rva + name - base));
-    jump(payload, rva, back);
-}
-
-static bool reserve(const payload_t *payload)
-{
-    /* Strings and helpers take about 250 bytes per module. */
-    if (payload->size > PAYLOAD_MAX - 512) {
-        fputs("Primordial payload exceeds its size limit\n", stderr);
-        return false;
-    }
-    return true;
-}
-
-static void resolve(code_rule_t *hooks, size_t count, const uint32_t *targets, uint32_t rva)
-{
-    for (size_t i = 0; i < count; ++i)
-        put32(hooks[i].replacement + 1, rva + targets[i] - (hooks[i].rva + 5u));
+    emit_jump(payload, rva, back);
 }
 
 static bool build_game(payload_t *payload, uint32_t rva, uint32_t next, uint32_t *entry)
 {
-    if (!reserve(payload))
+    if (!payload_reserve(payload, RESERVE, "Primordial"))
         return false;
-    *entry = (uint32_t)payload->size;
-    /* Syscalls pass through; next is a payload offset, not an image RVA. */
-    EMIT(0xe9, B4(next - (*entry + 5u)));
+    *entry = emit_entry(payload, next);
 
-    uint32_t skill_cfg = string(payload, "exec skill-p.cfg\n");
-    uint32_t waves = string(payload, "scripts/waves/%s-p.xml");
-    uint32_t name = string(payload, "primordial");
+    uint32_t skill_cfg = emit_string(payload, "exec skill-p.cfg\n");
+    uint32_t waves = emit_string(payload, "scripts/waves/%s-p.xml");
+    uint32_t name = emit_string(payload, "primordial");
 
     /* Level 5 execs its cfg; 0-4 take the jump table, the rest easy. */
     uint32_t skill = (uint32_t)payload->size;
     EMIT(0x83, 0xfe, 5);
-    uint32_t primordial = skip_if(payload, 0x74);
+    uint32_t primordial = emit_skip_if(payload, 0x74);
     EMIT(0x83, 0xfe, 4);
-    jump_if(payload, rva, 0x87, 0x24c1eu);  /* ja: mov eax,"exec skill-e.cfg\n" */
-    jump(payload, rva, 0x24bfbu);           /* jmp [esi*4+table] */
-    land(payload, primordial);
-    load_address(payload, rva, EAX, skill_cfg);
-    jump(payload, rva, 0x24c23u);           /* trap_SendConsoleCommand */
+    emit_jump_if(payload, rva, 0x87, 0x24c1eu);  /* ja: mov eax,"exec skill-e.cfg\n" */
+    emit_jump(payload, rva, 0x24bfbu);           /* jmp [esi*4+table] */
+    emit_land(payload, primordial);
+    emit_load_address(payload, rva, EAX, skill_cfg);
+    emit_jump(payload, rva, 0x24c23u);           /* trap_SendConsoleCommand */
 
     /* Push the map name, then this level's format instead of easy's. */
     uint32_t wave = (uint32_t)payload->size;
     EMIT(0x8d, 0x54, 0x24, 0x08, 0x52);     /* lea edx,[esp+8]; push edx */
     EMIT(0x83, 0xfe, 5);
-    primordial = skip_if(payload, 0x74);
-    jump(payload, rva, 0x5f362u);           /* push "scripts/waves/%s-e.xml" */
-    land(payload, primordial);
-    load_address(payload, rva, EAX, waves);
+    primordial = emit_skip_if(payload, 0x74);
+    emit_jump(payload, rva, 0x5f362u);           /* push "scripts/waves/%s-e.xml" */
+    emit_land(payload, primordial);
+    emit_load_address(payload, rva, EAX, waves);
     EMIT(0x50);                             /* push eax */
-    jump(payload, rva, 0x5f367u);           /* Com_sprintf */
+    emit_jump(payload, rva, 0x5f367u);           /* Com_sprintf */
 
     uint32_t unchanged = (uint32_t)payload->size;
     vote_name(payload, rva, ECX, EAX, name, 0x1f387u);
@@ -356,47 +276,45 @@ static bool build_game(payload_t *payload, uint32_t rva, uint32_t next, uint32_t
     const uint32_t targets[] = { skill, wave, unchanged, message };
     _Static_assert(ARRAY_SIZE(targets) == ARRAY_SIZE(patch_primordial_game_hooks),
                    "every GAME hook needs a helper");
-    resolve(patch_primordial_game_hooks, ARRAY_SIZE(targets), targets, rva);
+    resolve_hooks(patch_primordial_game_hooks, ARRAY_SIZE(targets), targets, rva);
     return true;
 }
 
 static bool build_cgame(payload_t *payload, uint32_t rva, uint32_t next, uint32_t *entry)
 {
-    if (!reserve(payload))
+    if (!payload_reserve(payload, RESERVE, "Primordial"))
         return false;
-    *entry = (uint32_t)payload->size;
-    /* Syscalls pass through; next is a payload offset, not an image RVA. */
-    EMIT(0xe9, B4(next - (*entry + 5u)));
+    *entry = emit_entry(payload, next);
 
-    uint32_t skill_cfg = string(payload, "exec skill-p.cfg\n");
-    uint32_t name = string(payload, "Primordial");
+    uint32_t skill_cfg = emit_string(payload, "exec skill-p.cfg\n");
+    uint32_t name = emit_string(payload, "Primordial");
 
     /* Level 5 execs its cfg; 3 takes brute's, the rest god's or easy's. */
     uint32_t skill = (uint32_t)payload->size;
     EMIT(0x83, 0xf8, 5);
-    uint32_t primordial = skip_if(payload, 0x74);
+    uint32_t primordial = emit_skip_if(payload, 0x74);
     EMIT(0x83, 0xf8, 3);
-    jump_if(payload, rva, 0x85, 0x27d07u);  /* jne: cmp eax,4 */
-    jump(payload, rva, 0x27d00u);           /* mov eax,"exec skill-b.cfg\n" */
-    land(payload, primordial);
-    load_address(payload, rva, EAX, skill_cfg);
-    jump(payload, rva, 0x27d16u);           /* trap_SendConsoleCommand */
+    emit_jump_if(payload, rva, 0x85, 0x27d07u);  /* jne: cmp eax,4 */
+    emit_jump(payload, rva, 0x27d00u);           /* mov eax,"exec skill-b.cfg\n" */
+    emit_land(payload, primordial);
+    emit_load_address(payload, rva, EAX, skill_cfg);
+    emit_jump(payload, rva, 0x27d16u);           /* trap_SendConsoleCommand */
 
     /* Call atoi with the caller's argument. For level 5, load the name
      * into edx and return past mov edx,[eax*4+names].
      */
     uint32_t scoreboard = (uint32_t)payload->size;
     EMIT(0xff, 0x74, 0x24, 0x04);           /* push [esp+4] */
-    call(payload, rva, 0x82e32u);           /* atoi */
+    emit_call(payload, rva, 0x82e32u);           /* atoi */
     EMIT(0x83, 0xc4, 0x04, 0x83, 0xf8, 5);
-    uint32_t other = skip_if(payload, 0x75);
-    load_address(payload, rva, EDX, name);
+    uint32_t other = emit_skip_if(payload, 0x75);
+    emit_load_address(payload, rva, EDX, name);
     EMIT(0x83, 0x04, 0x24, 7);              /* add dword [esp],7 */
-    land(payload, other);
+    emit_land(payload, other);
     EMIT(0xc3);
 
     const uint32_t targets[] = { skill, scoreboard };
-    resolve(patch_primordial_cgame_hooks, ARRAY_SIZE(targets), targets, rva);
+    resolve_hooks(patch_primordial_cgame_hooks, ARRAY_SIZE(targets), targets, rva);
     /* The connection screen's name slot holds an absolute address. */
     put32(patch_primordial_cgame_hooks[2].replacement, 0x30000000u + rva + name);
     return true;

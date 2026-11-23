@@ -9,17 +9,6 @@
  * shader on demand also works after a renderer restart, without a stale
  * cached handle. The syscall chain still submits the valuable models.
  */
-static uint32_t append(payload_t *payload, const void *data, size_t size)
-{
-    uint32_t at = (uint32_t)payload->size;
-    memcpy(payload->data + at, data, size);
-    payload->size += size;
-    return at;
-}
-
-#define EMIT(...) append(payload, (const unsigned char[]){ __VA_ARGS__ }, \
-                         sizeof((const unsigned char[]){ __VA_ARGS__ }))
-
 static bool build_rts_buildable(payload_t *payload, uint32_t rva,
                                uint32_t next, uint32_t *entry)
 {
@@ -29,11 +18,9 @@ static bool build_rts_buildable(payload_t *payload, uint32_t rva,
     };
     const char name[] = "igwlegacy/buildable";
     /* The fixed instruction sequence and string fit within this bound. */
-    if (payload->size > PAYLOAD_MAX - 256) {
-        fputs("RTS buildable payload exceeds its size limit\n", stderr);
+    if (!payload_reserve(payload, 256, "RTS buildable"))
         return false;
-    }
-    uint32_t shader = append(payload, name, sizeof(name));
+    uint32_t shader = payload_append(payload, name, sizeof(name));
     *entry = (uint32_t)payload->size;
     EMIT(0x83, 0x7d, 8, RENDER_SCENE);
     uint32_t other_call = EMIT(0x0f, 0x85, 0, 0, 0, 0);

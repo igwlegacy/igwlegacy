@@ -1,7 +1,7 @@
 #ifndef IGW_PATCHES_H
 #define IGW_PATCHES_H
 
-#include "patcher.h"
+#include "emit.h"
 
 /* Registration records have static storage; startup only links them together.
  * A record supplies CVAR rules, code rules, injected payload features,
@@ -50,8 +50,6 @@ void rules_register(rule_set_t *rules);
 #define REGISTER_PAYLOAD_FEATURE(rule) REGISTER_RULE_SET(rule, NULL, NULL, &(rule), NULL, NULL, 1)
 #define REGISTER_IMPORT_RULES(rules) REGISTER_RULE_SET(rules, NULL, NULL, NULL, rules, NULL, ARRAY_SIZE(rules))
 #define REGISTER_ADDRESS_RULES(rules) REGISTER_RULE_SET(rules, NULL, NULL, NULL, NULL, rules, ARRAY_SIZE(rules))
-
-#define B4(a) (a) & 255, ((a) >> 8) & 255, ((a) >> 16) & 255, ((a) >> 24) & 255
 
 /* Redirect an x87 operand to the existing zero float. Its position remains
  * covered by the DLL's original HIGHLOW relocation when the image rebases.

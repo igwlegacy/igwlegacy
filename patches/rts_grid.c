@@ -1,8 +1,5 @@
 #include "patches.h"
 
-#include <stdio.h>
-#include <string.h>
-
 /* World-space grid spacing in map units. Rebuild the patcher and install
  * cgamex86.dll after editing these constants. Z still follows the ground.
  * Whole units keep the preview exact when the build command serializes
@@ -48,17 +45,6 @@ static code_rule_t patch_rts_grid_hooks[] = {
 /* All helpers live in the existing injected section. Relative calls and
  * call/pop addressing let the DLL rebase without additional relocations.
  */
-static uint32_t append(payload_t *payload, const void *bytes, size_t size)
-{
-    uint32_t at = (uint32_t)payload->size;
-    memcpy(payload->data + at, bytes, size);
-    payload->size += size;
-    return at;
-}
-
-#define EMIT(...) append(payload, (const unsigned char[]){ __VA_ARGS__ }, \
-                         sizeof((const unsigned char[]){ __VA_ARGS__ }))
-
 static void trace_call(payload_t *payload, uint32_t rva)
 {
     /* CG_Trace uses ECX=start, EDX=end, EBX=mins, with result, maxs,
@@ -67,8 +53,8 @@ static void trace_call(payload_t *payload, uint32_t rva)
      */
     EMIT(0xff, 0x75, 20, 0xff, 0x75, 16,
          0xff, 0x75, 12, 0xff, 0x75, 8);
-    uint32_t at = (uint32_t)payload->size;
-    EMIT(0xe8, B4(TRACE - (rva + at + 5u)), 0x83, 0xc4, 16);
+    emit_call(payload, rva, TRACE);
+    EMIT(0x83, 0xc4, 16);
 }
 
 static bool build_rts_grid(payload_t *payload, uint32_t rva,
@@ -77,12 +63,9 @@ static bool build_rts_grid(payload_t *payload, uint32_t rva,
     /* This fixed helper sequence needs less than 512 bytes, including
      * both axes and rotation. Reserve it before emitting any instructions.
      */
-    if (payload->size > PAYLOAD_MAX - 512) {
-        fputs("RTS grid payload exceeds its size limit\n", stderr);
+    if (!payload_reserve(payload, 512, "RTS grid"))
         return false;
-    }
-    *entry = (uint32_t)payload->size;
-    EMIT(0xe9, B4(next - (*entry + 5u))); /* syscalls pass through */
+    *entry = emit_entry(payload, next);
 
     uint32_t trace = (uint32_t)payload->size;
     EMIT(0x55, 0x89, 0xe5, 0x83, 0xec, 36); /* frame and private ray */
@@ -163,8 +146,7 @@ static bool build_rts_grid(payload_t *payload, uint32_t rva,
           rotation_done - (other_structure + 6u));
     EMIT(0x59, 0x58,                        /* restore ecx/eax */
          0x5f, 0x5e, 0x5b, 0x8b, 0xe5);     /* original epilogue */
-    uint32_t at = (uint32_t)payload->size;
-    EMIT(0xe9, B4(0x737e9u - (rva + at + 5u)));
+    emit_jump(payload, rva, 0x737e9u);
 
     /* image_patch builds the payload before applying guarded code rules,
      * so their relative call targets can use this section's actual RVA.

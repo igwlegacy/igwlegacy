@@ -1,5 +1,6 @@
 executable(
   'igw-monkey-patcher',
+  'src/emit.c',
   'src/main.c',
   'src/pe.c',
   'src/payload.c',

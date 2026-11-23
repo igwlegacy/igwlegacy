@@ -1,8 +1,5 @@
 #include "patches.h"
 
-#include <stdio.h>
-#include <string.h>
-
 /* Weapon scripts play an activity backwards with a negative FPS, e.g.
  * "ACT_UNDEPLOY 140 5 0 -25" in weapon_lrifle.txt. The parser
  * (cgamex86:0x49840) stores frameLerp = initialLerp = 1000 / fps, so both
@@ -62,28 +59,13 @@ static code_rule_t patch_reverse_weapon_anims_hooks[] = {
       { 0xe8, 0, 0, 0, 0, 0x90, 0x90 } },
 };
 
-static uint32_t append(payload_t *payload, const void *bytes, size_t size)
-{
-    uint32_t at = (uint32_t)payload->size;
-    memcpy(payload->data + at, bytes, size);
-    payload->size += size;
-    return at;
-}
-
-#define EMIT(...) append(payload, (const unsigned char[]){ __VA_ARGS__ }, \
-                         sizeof((const unsigned char[]){ __VA_ARGS__ }))
-
 static bool build_reverse_weapon_anims(payload_t *payload, uint32_t rva,
                                        uint32_t next, uint32_t *entry)
 {
     /* The four helpers need well under 128 bytes. */
-    if (payload->size > PAYLOAD_MAX - 128) {
-        fputs("Reverse weapon animation payload exceeds its size limit\n",
-              stderr);
+    if (!payload_reserve(payload, 128, "Reverse weapon animation"))
         return false;
-    }
-    *entry = (uint32_t)payload->size;
-    EMIT(0xe9, B4(next - (*entry + 5u))); /* syscalls pass through */
+    *entry = emit_entry(payload, next);
 
     /* animationTime = frameTime + |initialLerp|; flags are not consumed. */
     uint32_t initial = EMIT(0x8b, 0x40, 0x10,    /* mov eax,[eax+0x10] */
