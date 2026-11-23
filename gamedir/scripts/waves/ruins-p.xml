@@ -1,0 +1,253 @@
+<?xml version="1.0" ?>
+<definition>
+<MAXCOUNTS>
+	<CONSCRIPTS>75</CONSCRIPTS>
+	<VEHICLES>4</VEHICLES>
+	<BOTS>3</BOTS>
+	<OFFICERS>1</OFFICERS>
+	<COMMANDOS>30</COMMANDOS>
+</MAXCOUNTS>
+<WAVESETTINGS>
+        <MINWAVEDIST_SMALL>2000</MINWAVEDIST_SMALL>
+	<MINWAVEDIST_MEDIUM>1500</MINWAVEDIST_MEDIUM>
+	<MINWAVEDIST_LARGE>1000</MINWAVEDIST_LARGE>
+	<ROAMERINTERVAL>1000</ROAMERINTERVAL>
+	<SMALLWAVE_TIME>70000</SMALLWAVE_TIME>
+	<MEDIUMWAVE_TIME>200000</MEDIUMWAVE_TIME>	
+</WAVESETTINGS>
+
+<ARTILLERY> 
+	<spot>	  
+		<x>-1727</x>
+		<y>2311</y>
+		<z>755</z>
+		<intensity>1</intensity>
+	</spot>
+	<spot>
+		<x>-923</x>
+		<y>-2846</y>
+		<z>755</z>
+		<intensity>1</intensity>
+	</spot>
+</ARTILLERY>
+
+<SKILLSETTINGS>
+<sk_morale_max>400</sk_morale_max>
+<sk_morale_start>400</sk_morale_start>
+<sk_deadstronghold_morale>75</sk_deadstronghold_morale>
+<sk_stronghold_morale>5</sk_stronghold_morale>
+<sk_deadofficer_morale>21</sk_deadofficer_morale>
+<sk_officer_morale>7</sk_officer_morale>
+<sk_officer_respawntime>30000</sk_officer_respawntime>	
+
+<sk_Cmorale_max>1000</sk_Cmorale_max>
+<sk_Amorale_max>400</sk_Amorale_max>
+<sk_Cmorale_start>1000</sk_Cmorale_start>
+<sk_Amorale_start>400</sk_Amorale_start>
+<sk_officer_firstspawntime>220000</sk_officer_firstspawntime>
+
+<sk_player_moralecost>3</sk_player_moralecost>
+<sk_bot_moralecost>3</sk_bot_moralecost>
+<sk_npc_moralecost>1</sk_npc_moralecost>
+<sk_vehicle_moralecost>10</sk_vehicle_moralecost>
+
+
+<sk_immortal_time>1000</sk_immortal_time>
+<sk_max_food>4</sk_max_food>
+<sk_max_jewel>3</sk_max_jewel>
+
+<sk_wavespawn_delay>10000</sk_wavespawn_delay>
+<sk_wavespawn_random>2000</sk_wavespawn_random>
+<sk_roamerspawn_delay>27000</sk_roamerspawn_delay>
+<sk_roamerspawn_random>5000</sk_roamerspawn_random>
+<sk_numbombers>10</sk_numbombers>
+</SKILLSETTINGS>
+
+
+<AI_SETTINGS>
+	<AIM>0.9</AIM>
+	<GANGSIZE>5</GANGSIZE>
+        <SQUADSIZE>4</SQUADSIZE>
+        <REACTIONTIME>200</REACTIONTIME>
+        <WAVEDISTANCE>70</WAVEDISTANCE>
+</AI_SETTINGS>
+
+
+<WAVE routes="1 2 3" size="2">
+	<CONSCRIPT>35</CONSCRIPT>
+	<TEMPLAR_RATIO>0.4</TEMPLAR_RATIO>
+	<WALKER>1</WALKER>
+</WAVE>
+
+<WAVE routes="1 2 3" size="2">
+	<CONSCRIPT>38</CONSCRIPT>
+	<TEMPLAR_RATIO>0.3</TEMPLAR_RATIO>
+	<WALKER>1</WALKER>
+</WAVE>
+
+<WAVE routes="1 2 3" size="2">
+	<CONSCRIPT>36</CONSCRIPT>
+	<TEMPLAR_RATIO>0.4</TEMPLAR_RATIO>
+	<ONTOS>1</ONTOS>
+</WAVE>
+
+<WAVE routes="1 2 3" size="2">
+	<CONSCRIPT>30</CONSCRIPT>
+	<TEMPLAR_RATIO>0.3</TEMPLAR_RATIO>
+	<WALKER>1</WALKER>
+</WAVE>
+
+<WAVE routes="1 2 3" size="1">
+	<CONSCRIPT>30</CONSCRIPT>
+	<TEMPLAR_RATIO>0.3</TEMPLAR_RATIO>
+	<ONTOS>1</ONTOS>
+</WAVE>
+
+<WAVE routes="1 2 3" size="1">
+	<CONSCRIPT>35</CONSCRIPT>
+	<TEMPLAR_RATIO>0.2</TEMPLAR_RATIO>
+	<ONTOS>1</ONTOS>
+</WAVE>
+
+<WAVE routes="1 2 3" size="1">
+	<CONSCRIPT>37</CONSCRIPT>
+	<TEMPLAR_RATIO>0.2</TEMPLAR_RATIO>
+	<ONTOS>1</ONTOS>
+</WAVE>
+
+<WAVE routes="1 2 3" size="1">
+	<CONSCRIPT>45</CONSCRIPT>
+	<TEMPLAR_RATIO>0.3</TEMPLAR_RATIO>
+	<ONTOS>1</ONTOS>
+</WAVE>
+
+<WAVE routes="1 2 3" size="0">
+	<CONSCRIPT>75</CONSCRIPT>
+	<TEMPLAR_RATIO>0.3</TEMPLAR_RATIO>
+	<SCARAB>1</SCARAB>
+	<ONTOS>1</ONTOS>
+	<SCARAB>1</SCARAB>
+</WAVE>
+
+<WAVE routes="1 2 3" size="0">
+	<CONSCRIPT>75</CONSCRIPT>
+	<TEMPLAR_RATIO>0.2</TEMPLAR_RATIO>
+	<SCARAB>1</SCARAB>
+	<ONTOS>1</ONTOS>
+	<SCARAB>1</SCARAB>
+</WAVE>
+
+<WAVE routes="1 2 3" size="0">
+	<CONSCRIPT>75</CONSCRIPT>
+	<TEMPLAR_RATIO>0.1</TEMPLAR_RATIO>
+	<SCARAB>1</SCARAB>
+	<ONTOS>1</ONTOS>
+	<SCARAB>1</SCARAB>
+</WAVE>
+
+<deathhand>
+	<x>520</x>
+	<y>-72</y>
+	<z>306</z>
+	<yaw>66</yaw>
+</deathhand>
+
+<deathhand>
+	<x>-11</x>
+	<y>-2009</y>
+	<z>178</z>
+	<yaw>64</yaw>
+</deathhand>
+
+<deathhand>
+	<x>-2061</x>
+	<y>-1200</y>
+	<z>178</z>
+	<yaw>52</yaw>
+</deathhand>
+
+<rocketspot>
+	<x>792</x>
+	<y>2030</y>
+	<z>380</z>
+	<yaw>-151</yaw>
+</rocketspot>
+
+<rocketspot>
+	<x>6</x>
+	<y>1687</y>
+	<z>434</z>
+	<yaw>-57</yaw>
+</rocketspot>
+
+<rocketspot>
+	<x>-1516</x>
+	<y>715</y>
+	<z>306</z>
+	<yaw>45</yaw>
+</rocketspot>
+
+<rocketspot>
+	<x>-1810</x>
+	<y>-1729</y>
+	<z>946</z>
+	<yaw>174</yaw>
+</rocketspot>
+
+<rocketspot>
+	<x>312</x>
+	<y>-1709</y>
+	<z>306</z>
+	<yaw>-53</yaw>
+</rocketspot>
+
+<rocketspot>
+	<x>170</x>
+	<y>409</y>
+	<z>434</z>
+	<yaw>-43</yaw>
+</rocketspot>
+
+<radiospot>
+	<x>2209</x>
+	<y>2437</y>
+	<z>306</z>
+	<yaw>91</yaw>
+</radiospot>
+
+<radiospot>
+	<x>-255</x>
+	<y>-508</y>
+	<z>306</z>
+	<yaw>-130</yaw>
+</radiospot>
+
+<radiospot>
+	<x>-1277</x>
+	<y>-1292</y>
+	<z>178</z>
+	<yaw>-42</yaw>
+</radiospot>
+
+<radiospot>
+	<x>69</x>
+	<y>-1713</y>
+	<z>178</z>
+	<yaw>-127</yaw>
+</radiospot>
+
+<radiospot>
+	<x>-854</x>
+	<y>-2498</y>
+	<z>178</z>
+	<yaw>-120</yaw>
+</radiospot>
+
+<radiospot>
+	<x>-2586</x>
+	<y>-1363</y>
+	<z>178</z>
+	<yaw>-89</yaw>
+</radiospot>
+
+</definition>

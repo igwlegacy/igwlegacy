@@ -1,0 +1,258 @@
+<?xml version="1.0" ?>
+<!-- Every setting is explained in spiral-p.md next to this file. -->
+<definition>
+<MAXCOUNTS>
+	<CONSCRIPTS>100</CONSCRIPTS>
+	<VEHICLES>4</VEHICLES>
+	<BOTS>3</BOTS>
+	<OFFICERS>1</OFFICERS>
+	<COMMANDOS>100</COMMANDOS>
+</MAXCOUNTS>
+<WAVESETTINGS>
+  <MINWAVEDIST_SMALL>2000</MINWAVEDIST_SMALL>
+	<MINWAVEDIST_MEDIUM>1500</MINWAVEDIST_MEDIUM>
+	<MINWAVEDIST_LARGE>1000</MINWAVEDIST_LARGE>
+	<ROAMERINTERVAL>1000</ROAMERINTERVAL>
+	<SMALLWAVE_TIME>70000</SMALLWAVE_TIME>
+	<MEDIUMWAVE_TIME>200000</MEDIUMWAVE_TIME>
+</WAVESETTINGS>
+
+
+<SKILLSETTINGS>
+<sk_morale_max>400</sk_morale_max>
+<sk_morale_start>400</sk_morale_start>
+<sk_deadstronghold_morale>300</sk_deadstronghold_morale>
+<sk_stronghold_morale>5</sk_stronghold_morale>
+<sk_deadofficer_morale>21</sk_deadofficer_morale>
+<sk_officer_morale>7</sk_officer_morale>
+<sk_officer_respawntime>30000</sk_officer_respawntime>
+
+<sk_Cmorale_max>1000</sk_Cmorale_max>
+<sk_Amorale_max>400</sk_Amorale_max>
+<sk_Cmorale_start>1000</sk_Cmorale_start>
+<sk_Amorale_start>400</sk_Amorale_start>
+<sk_officer_firstspawntime>1000</sk_officer_firstspawntime>
+
+<sk_player_moralecost>3</sk_player_moralecost>
+<sk_bot_moralecost>3</sk_bot_moralecost>
+<sk_npc_moralecost>1</sk_npc_moralecost>
+<sk_vehicle_moralecost>10</sk_vehicle_moralecost>
+
+<sk_immortal_time>1000</sk_immortal_time>
+<sk_max_food>4</sk_max_food>
+<sk_max_jewel>3</sk_max_jewel>
+
+<sk_wavespawn_delay>10000</sk_wavespawn_delay>
+<sk_wavespawn_random>2000</sk_wavespawn_random>
+<sk_roamerspawn_delay>1000</sk_roamerspawn_delay>
+<sk_roamerspawn_random>1000</sk_roamerspawn_random>
+<sk_numbombers>0</sk_numbombers>
+</SKILLSETTINGS>
+
+
+<AI_SETTINGS>
+	<AIM>0.6</AIM>
+	<GANGSIZE>5</GANGSIZE>
+  <SQUADSIZE>20</SQUADSIZE>
+  <REACTIONTIME>200</REACTIONTIME>
+  <WAVEDISTANCE>70</WAVEDISTANCE>
+</AI_SETTINGS>
+
+
+<WAVE routes="1 2 3" size="2">
+	<CONSCRIPT>31</CONSCRIPT>
+	<WALKER>1</WALKER>
+</WAVE>
+
+<WAVE routes="1 2 3" size="2">
+	<CONSCRIPT>30</CONSCRIPT>
+	<WALKER>1</WALKER>
+</WAVE>
+
+<WAVE routes="1 2 3" size="2">
+	<CONSCRIPT>25</CONSCRIPT>
+	<ONTOS>1</ONTOS>
+</WAVE>
+
+<WAVE routes="1 2 3" size="2">
+	<CONSCRIPT>15</CONSCRIPT>
+	<WALKER>1</WALKER>
+</WAVE>
+
+<WAVE routes="1 2 3" size="1">
+	<CONSCRIPT>35</CONSCRIPT>
+	<ONTOS>1</ONTOS>
+</WAVE>
+
+<WAVE routes="1 2 3" size="1">
+	<CONSCRIPT>55</CONSCRIPT>
+	<ONTOS>1</ONTOS>
+</WAVE>
+
+<WAVE routes="1 2 3" size="1">
+	<CONSCRIPT>45</CONSCRIPT>
+	<ONTOS>1</ONTOS>
+</WAVE>
+
+<WAVE routes="1 2 3" size="1">
+	<CONSCRIPT>50</CONSCRIPT>
+	<ONTOS>1</ONTOS>
+</WAVE>
+
+<WAVE routes="1 2 3" size="0">
+	<CONSCRIPT>80</CONSCRIPT>
+	<SCARAB>1</SCARAB>
+	<ONTOS>1</ONTOS>
+	<SCARAB>1</SCARAB>
+</WAVE>
+
+<WAVE routes="1 2 3" size="0">
+	<CONSCRIPT>80</CONSCRIPT>
+	<SCARAB>1</SCARAB>
+	<ONTOS>1</ONTOS>
+	<SCARAB>1</SCARAB>
+	<WALKER>1</WALKER>
+</WAVE>
+
+<WAVE routes="1 2 3" size="0">
+	<CONSCRIPT>2</CONSCRIPT>
+	<SCARAB>1</SCARAB>
+	<ONTOS>1</ONTOS>
+	<SCARAB>1</SCARAB>
+</WAVE>
+
+<deathhand>
+	<x>-1906</x>
+	<y>-1640</y>
+	<z>50</z>
+	<yaw>85</yaw>
+</deathhand>
+
+<deathhand>
+	<x>1666</x>
+	<y>-1236</y>
+	<z>50</z>
+	<yaw>130</yaw>
+</deathhand>
+
+<deathhand>
+	<x>-2283</x>
+	<y>1983</y>
+	<z>178</z>
+	<yaw>-73</yaw>
+</deathhand>
+
+<deathhand>
+	<x>-2630</x>
+	<y>-438</y>
+	<z>306</z>
+	<yaw>6</yaw>
+</deathhand>
+
+<radiospot>
+	<x>-281</x>
+	<y>-1056</y>
+	<z>434</z>
+	<yaw>-137</yaw>
+</radiospot>
+
+<radiospot>
+	<x>-638</x>
+	<y>-247</y>
+	<z>54</z>
+	<yaw>-42</yaw>
+</radiospot>
+
+<radiospot>
+	<x>473</x>
+	<y>1429</y>
+	<z>182</z>
+	<yaw>-76</yaw>
+</radiospot>
+
+<radiospot>
+	<x>1092</x>
+	<y>1069</y>
+	<z>306</z>
+	<yaw>159</yaw>
+</radiospot>
+
+<radiospot>
+	<x>821</x>
+	<y>-1709</y>
+	<z>178</z>
+	<yaw>26</yaw>
+</radiospot>
+
+<radiospot>
+	<x>-379</x>
+	<y>-1971</y>
+	<z>122</z>
+	<yaw>0</yaw>
+</radiospot>
+
+<radiospot>
+	<x>-1586</x>
+	<y>2369</y>
+	<z>306</z>
+	<yaw>133</yaw>
+</radiospot>
+
+<radiospot>
+	<x>-329</x>
+	<y>1612</y>
+	<z>306</z>
+	<yaw>-50</yaw>
+</radiospot>
+
+<rocketspot>
+	<x></x>
+	<y></y>
+	<z></z>
+	<yaw></yaw>
+</rocketspot>
+(-989 1086 1120) : 4
+
+<rocketspot>
+	<x>-2617</x>
+	<y>1223</y>
+	<z>306</z>
+	<yaw>88</yaw>
+</rocketspot>
+
+<rocketspot>
+	<x>-1212</x>
+	<y>-1209</y>
+	<z>306</z>
+	<yaw>-54</yaw>
+</rocketspot>
+
+<rocketspot>
+	<x>1199</x>
+	<y>-1492</y>
+	<z>180</z>
+	<yaw>-126</yaw>
+</rocketspot>
+
+<rocketspot>
+	<x>361</x>
+	<y>1084</y>
+	<z>310</z>
+	<yaw>-147</yaw>
+</rocketspot>
+
+<rocketspot>
+	<x>-184</x>
+	<y>2112</y>
+	<z>178</z>
+	<yaw>144</yaw>
+</rocketspot>
+
+<rocketspot>
+	<x>1619</x>
+	<y>866</y>
+	<z>306</z>
+	<yaw>-117</yaw>
+</rocketspot>
+
+</definition>
