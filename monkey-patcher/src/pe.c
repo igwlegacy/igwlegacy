@@ -353,6 +353,75 @@ static bool add_relocations(image_t *image, uint32_t first, size_t count)
     return true;
 }
 
+/* Find whether any base relocation of the directory touches the dword at
+ * rva. Only HIGHLOW and ABSOLUTE entries are expected in these images.
+ */
+static bool relocation_overlaps(const image_t *image, uint32_t rva, bool *overlaps)
+{
+    const unsigned char *opt = image->data + image->optional;
+    uint32_t dir_rva = get32(opt + 136), dir_size = get32(opt + 140);
+    size_t dir;
+    *overlaps = false;
+    if (!image_offset(image, dir_rva, dir_size, &dir))
+        goto invalid;
+    for (uint32_t at = 0; at < dir_size;) {
+        if (dir_size - at < 8)
+            goto invalid;
+        uint32_t page = get32(image->data + dir + at), size = get32(image->data + dir + at + 4);
+        if (size < 8 || size % 2 || size > dir_size - at)
+            goto invalid;
+        for (uint32_t i = 8; i < size; i += 2) {
+            uint16_t entry = get16(image->data + dir + at + i);
+            uint32_t target = page + (entry & 0xfffu);
+            if (!(entry >> 12))
+                continue;
+            if (entry >> 12 != 3)
+                goto invalid;
+            /* Both are four-byte slots: they overlap within three bytes. */
+            if ((uint64_t)target + 4 > rva && (uint64_t)rva + 4 > target)
+                *overlaps = true;
+        }
+        at += size;
+    }
+    return true;
+invalid:
+    fprintf(stderr, "Unsupported base relocation directory\n");
+    return false;
+}
+
+/* Write an address rule's dword and add its relocation. The address must
+ * point into the image, and the slot must not be relocated yet, or a rebase
+ * would add the delta twice.
+ */
+static bool relocate_address(image_t *image, const address_rule_t *rule)
+{
+    uint32_t base = image->profile->image_base;
+    uint32_t size = get32(image->data + image->optional + 56);
+    size_t offset;
+    bool overlaps;
+    if (!image_offset(image, rule->rva, 4, &offset))
+        return false;
+    if (get32(image->data + offset) != rule->expected) {
+        fprintf(stderr, "Unexpected bytes for %s at RVA 0x%08" PRIx32 "\n", rule->name, rule->rva);
+        return false;
+    }
+    if (rule->address < base || rule->address - base >= size) {
+        fprintf(stderr, "Address 0x%08" PRIx32 " of %s is outside the image\n",
+                rule->address, rule->name);
+        return false;
+    }
+    if (!relocation_overlaps(image, rule->rva, &overlaps))
+        return false;
+    if (overlaps) {
+        fprintf(stderr, "RVA 0x%08" PRIx32 " of %s is already relocated\n", rule->rva, rule->name);
+        return false;
+    }
+    if (!add_relocations(image, rule->rva, 1))
+        return false;
+    put32(image->data + offset, rule->address);
+    return true;
+}
+
 /* Compare a NUL-terminated name in the image to a rule's, ignoring ASCII
  * case like the Windows loader does for DLL names.
  */
@@ -520,6 +589,16 @@ bool image_patch(image_t *image)
         }
         memcpy(image->data + offset, r->replacement, r->size);
         printf("  code 0x%08" PRIx32 ": %s\n", r->rva, r->name);
+        ++changes;
+    }
+    /* After the payload, whose section then counts as part of the image. */
+    for (size_t i = 0; i < address_rule_count; ++i) {
+        const address_rule_t *r = address_rules[i];
+        if (r->module != p->module)
+            continue;
+        if (!relocate_address(image, r))
+            return false;
+        printf("  address 0x%08" PRIx32 " = 0x%08" PRIx32 ": %s\n", r->rva, r->address, r->name);
         ++changes;
     }
     if (changes)

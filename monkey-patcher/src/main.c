@@ -98,6 +98,10 @@ static void list_rules(void)
         const import_rule_t *r = import_rules[i];
         printf("%s: drop import %s (%s)\n", module_name(r->module), r->dll, r->name);
     }
+    for (size_t i = 0; i < address_rule_count; ++i) {
+        const address_rule_t *r = address_rules[i];
+        printf("%s: relocated address %s\n", module_name(r->module), r->name);
+    }
 }
 
 int main(int argc, char **argv)

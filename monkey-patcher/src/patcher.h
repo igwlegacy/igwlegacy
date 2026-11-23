@@ -58,6 +58,19 @@ typedef struct {
     uint32_t stub_rva;
 } import_rule_t;
 
+/* Store an absolute address in a dword that no base relocation covers yet,
+ * such as a pointer table's zero terminator, and add a HIGHLOW relocation
+ * for it, so the address stays valid if the image is ever rebased. The
+ * address must lie inside the image, which includes the payload section.
+ */
+typedef struct {
+    module_t module;
+    const char *name;
+    uint32_t rva;
+    uint32_t expected;
+    uint32_t address;
+} address_rule_t;
+
 typedef struct {
     module_t module;
     const char *name;
@@ -99,6 +112,8 @@ extern const payload_feature_t *const *payload_features;
 extern size_t payload_feature_count;
 extern const import_rule_t *const *import_rules;
 extern size_t import_rule_count;
+extern const address_rule_t *const *address_rules;
+extern size_t address_rule_count;
 
 uint16_t get16(const unsigned char *p);
 uint32_t get32(const unsigned char *p);

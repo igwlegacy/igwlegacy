@@ -12,6 +12,8 @@ const payload_feature_t *const *payload_features;
 size_t payload_feature_count;
 const import_rule_t *const *import_rules;
 size_t import_rule_count;
+const address_rule_t *const *address_rules;
+size_t address_rule_count;
 
 static rule_set_t *rule_sets;
 
@@ -34,6 +36,7 @@ static bool rules_collect(void)
         return true;
 
     size_t cvar_count = 0, code_count = 0, feature_count = 0, import_count = 0;
+    size_t address_count = 0;
     for (const rule_set_t *set = rule_sets; set; set = set->next) {
         if (set->cvars) {
             if (set->count > SIZE_MAX / sizeof(*cvar_rules) - cvar_count)
@@ -51,6 +54,10 @@ static bool rules_collect(void)
             if (set->count > SIZE_MAX / sizeof(*import_rules) - import_count)
                 goto too_many;
             import_count += set->count;
+        } else if (set->addresses) {
+            if (set->count > SIZE_MAX / sizeof(*address_rules) - address_count)
+                goto too_many;
+            address_count += set->count;
         }
     }
 
@@ -61,16 +68,19 @@ static bool rules_collect(void)
     const code_rule_t **code = code_count ? malloc(code_count * sizeof(*code)) : NULL;
     const payload_feature_t **features = feature_count ? malloc(feature_count * sizeof(*features)) : NULL;
     const import_rule_t **imports = import_count ? malloc(import_count * sizeof(*imports)) : NULL;
+    const address_rule_t **addresses =
+        address_count ? malloc(address_count * sizeof(*addresses)) : NULL;
     if ((cvar_count && !cvars) || (code_count && !code) || (feature_count && !features) ||
-        (import_count && !imports)) {
+        (import_count && !imports) || (address_count && !addresses)) {
         free(cvars);
         free(code);
         free(features);
         free(imports);
+        free(addresses);
         fputs("Could not allocate patch rules\n", stderr);
         return false;
     }
-    cvar_count = code_count = feature_count = import_count = 0;
+    cvar_count = code_count = feature_count = import_count = address_count = 0;
     for (const rule_set_t *set = rule_sets; set; set = set->next) {
         for (size_t i = 0; i < set->count; ++i) {
             if (set->cvars)
@@ -81,6 +91,8 @@ static bool rules_collect(void)
                 features[feature_count++] = &set->features[i];
             else if (set->imports)
                 imports[import_count++] = &set->imports[i];
+            else if (set->addresses)
+                addresses[address_count++] = &set->addresses[i];
         }
     }
     cvar_rules = cvars;
@@ -91,6 +103,8 @@ static bool rules_collect(void)
     payload_feature_count = feature_count;
     import_rules = imports;
     import_rule_count = import_count;
+    address_rules = addresses;
+    address_rule_count = address_count;
     collected = true;
     return true;
 
@@ -189,6 +203,36 @@ bool rules_validate(void)
                 (uint64_t)rule->stub_rva < (uint64_t)code->rva + code->size &&
                 (uint64_t)code->rva < (uint64_t)rule->stub_rva + IMPORT_STUB_SIZE) {
                 fprintf(stderr, "Overlapping import stub and code rule: %s / %s\n",
+                        rule->name, code->name);
+                return false;
+            }
+        }
+    }
+    for (size_t i = 0; i < address_rule_count; ++i) {
+        const address_rule_t *rule = address_rules[i];
+        if ((rule->module != GAME && rule->module != CGAME && rule->module != UI &&
+             rule->module != ENGINE && rule->module != SERVER) ||
+            !rule->name || !rule->name[0] || rule->rva > UINT32_MAX - 4) {
+            fprintf(stderr, "Invalid address rule %zu\n", i);
+            return false;
+        }
+        /* An address dword is written like a code rule and must not share
+         * bytes with one or with another address rule.
+         */
+        for (size_t j = 0; j < i; ++j) {
+            const address_rule_t *other = address_rules[j];
+            if (rule->module == other->module &&
+                rule->rva < other->rva + 4 && other->rva < rule->rva + 4) {
+                fprintf(stderr, "Overlapping address rules: %s / %s\n", rule->name, other->name);
+                return false;
+            }
+        }
+        for (size_t j = 0; j < code_rule_count; ++j) {
+            const code_rule_t *code = code_rules[j];
+            if (code->enabled && code->module == rule->module &&
+                (uint64_t)rule->rva < (uint64_t)code->rva + code->size &&
+                (uint64_t)code->rva < (uint64_t)rule->rva + 4) {
+                fprintf(stderr, "Overlapping address and code rule: %s / %s\n",
                         rule->name, code->name);
                 return false;
             }
