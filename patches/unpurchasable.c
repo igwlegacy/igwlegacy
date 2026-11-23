@@ -19,10 +19,10 @@
  * 2 hovered (light grey) and 3 pressed or owned (dark grey). The weapon and
  * upgrade buttons get a fifth one, UNPURCHASABLE_STATE, which every retail
  * input handler ignores like the disabled one and which the button draw
- * hooks render with the light grey frame tinted darker; their price
- * labels lose their
- * text meanwhile. RTS build and structure upgrade buttons already turn
- * grey while unaffordable, so they only lose their price text.
+ * hooks render in a dark grey; their price labels lose their text
+ * meanwhile. The RTS build and structure upgrade buttons get a sixth
+ * state, UNPURCHASABLE_ICON_STATE, for the same, as their icons order
+ * their frames differently, and lose their price text as well.
  *
  * Every hook is a relative jump or call into the injected section, whose
  * helpers address retail data with call/pop. No hook overwrites bytes that
@@ -47,16 +47,28 @@ _Static_assert(UNPURCHASABLE > 9999u, "money reaches up to 9999");
 #define DISABLED_STATE 1u
 #define OWNED_STATE 3u
 #define UNPURCHASABLE_STATE 4u
+/* The same for the RTS build and structure upgrade buttons, whose icons
+ * have a frame order of their own.
+ */
+#define UNPURCHASABLE_ICON_STATE 5u
 /* Retail cgame labels, the icon and price beside each buy button: 0x4e4
  * bytes, their text at the same +0x8c.
  */
 #define LABEL_SIZE 0x4e4u
-/* UNPURCHASABLE_STATE is drawn with the hovered frame, light grey, tinted
- * by DIM (0.3f as IEEE bits): about a third as bright as the owned dark
- * grey frame and neutral unlike the green and red ones.
+/* UNPURCHASABLE_STATE is drawn with the hovered frame of the buy button
+ * texture, light grey, tinted by DIM (0.15f as IEEE bits): a near black
+ * grey, darker than the owned dark grey frame and than the green and red
+ * ones, and neutral. The RTS icons (textures/ui/hud/buyicons/) order
+ * their frames normal, disabled grey, hovered and pressed, all in
+ * color but the disabled one. UNPURCHASABLE_ICON_STATE is drawn with that
+ * frame, mean brightness 44, tinted by DIM_ICON (0.35f) to about the same
+ * darkness. The frame is 6 minus the state, the tint the state's entry of
+ * the tints from UNPURCHASABLE_STATE on.
  */
-#define GREY_FRAME 2u
-#define DIM 0x3e99999au
+#define DIM 0x3e19999au
+#define DIM_ICON 0x3eb33333u
+_Static_assert(6u - UNPURCHASABLE_STATE == 2u && 6u - UNPURCHASABLE_ICON_STATE == 1u,
+               "the hovered and the disabled frame");
 
 /* Hook replacements receive their rel32 once the payload has a known RVA. */
 static code_rule_t patch_unpurchasable_game_hooks[] = {
@@ -91,12 +103,12 @@ static code_rule_t patch_unpurchasable_cgame_hooks[] = {
     /* The RTS build menu's frame, after its build buttons' loop, with the
      * menu in ebx: call 0x47820, which only reads globals.
      */
-    { CGAME, true, "unpurchasable: hide RTS structure prices", 0x742be, 5,
+    { CGAME, true, "unpurchasable: grey out RTS structures", 0x742be, 5,
       { 0xe8, B4(0x47820u - 0x742c3u) }, { 0xe8, 0, 0, 0, 0 } },
     /* Both calls of the RTS structure panel (0x71490), the menu in edi. */
-    { CGAME, true, "unpurchasable: hide RTS structure upgrade price", 0x733cc, 5,
+    { CGAME, true, "unpurchasable: grey out RTS structure upgrades", 0x733cc, 5,
       { 0xe8, B4(0x71490u - 0x733d1u) }, { 0xe8, 0, 0, 0, 0 } },
-    { CGAME, true, "unpurchasable: hide RTS structure upgrade price", 0x74262, 5,
+    { CGAME, true, "unpurchasable: grey out RTS structure upgrades", 0x74262, 5,
       { 0xe8, B4(0x71490u - 0x74267u) }, { 0xe8, 0, 0, 0, 0 } },
     /* The draw function of every button, the button on the stack:
      * push ecx; mov eax,[esp+8].
@@ -226,6 +238,26 @@ static void price_text(payload_t *payload, unsigned reg, uint32_t text, uint32_t
     emit_land(payload, done);
 }
 
+/* Switches the state of the button at offset state from reg by whether
+ * eax is nonzero (blocked): to blocked when it is, and when it is not from
+ * blocked back to disabled, from which the retail refresh picks the state
+ * again. Leaves eax as it was.
+ */
+static void set_state(payload_t *payload, unsigned reg, uint32_t state, uint32_t blocked)
+{
+    unsigned char mov = (unsigned char)(0x80 | reg), cmp = (unsigned char)(0xb8 | reg);
+    EMIT(0x85, 0xc0);                       /* test eax,eax */
+    uint32_t buyable = emit_skip_if(payload, 0x74); /* jz */
+    EMIT(0xc7, mov, B4(state), B4(blocked)); /* mov dword [reg+state],blocked */
+    uint32_t done = emit_skip_if(payload, 0xeb); /* jmp */
+    emit_land(payload, buyable);
+    EMIT(0x83, cmp, B4(state), (unsigned char)blocked); /* cmp dword [reg+state],blocked */
+    uint32_t kept = emit_skip_if(payload, 0x75); /* jne */
+    EMIT(0xc7, mov, B4(state), B4(DISABLED_STATE)); /* mov dword [reg+state],1 */
+    emit_land(payload, kept);
+    emit_land(payload, done);
+}
+
 /* One menu page's weapons or upgrades. Prices are vmCvar_t integers from
  * the RVA costs on, and the buttons' states and the price labels menu
  * offsets from state and label on, BUTTON_SIZE and LABEL_SIZE apart. With
@@ -266,16 +298,7 @@ static void grey_items(payload_t *payload, uint32_t base, const items_t *items,
         emit_land(payload, not_owned);
         if (chained)
             EMIT(0x89, 0xc1);               /* mov ecx,eax */
-        EMIT(0x85, 0xc0);                   /* test eax,eax */
-        uint32_t buyable = emit_skip_if(payload, 0x74); /* jz */
-        EMIT(0xc7, 0x82, B4(state), B4(UNPURCHASABLE_STATE));
-        uint32_t done = emit_skip_if(payload, 0xeb); /* jmp */
-        emit_land(payload, buyable);
-        EMIT(0x83, 0xba, B4(state), UNPURCHASABLE_STATE); /* cmp dword [edx+state],4 */
-        uint32_t kept = emit_skip_if(payload, 0x75); /* jne */
-        EMIT(0xc7, 0x82, B4(state), B4(DISABLED_STATE));
-        emit_land(payload, kept);
-        emit_land(payload, done);
+        set_state(payload, EDX, state, UNPURCHASABLE_STATE);
         EMIT(0x85, 0xc0);                   /* test eax,eax */
         price_text(payload, EDX, items->label + i * LABEL_SIZE + BUTTON_TEXT, cost, show_price);
     }
@@ -290,18 +313,25 @@ static uint32_t begin_menu(payload_t *payload, uint32_t rva, unsigned reg)
     return base;
 }
 
-/* The RTS build buttons, whose text is their price: empty while the
- * structure is priced UNPURCHASABLE or more, shown again once it is not.
- * The menu is in ebx and the anchor at base in esi.
+/* The RTS build buttons, whose text is their price. Each frame retail
+ * disables a button while its structure costs more than the money and,
+ * once it does not, turns only a disabled one normal or hovered. While
+ * the structure is priced UNPURCHASABLE or more the button becomes
+ * UNPURCHASABLE_ICON_STATE and its text empty; once it is not, it goes back
+ * to disabled for retail to resolve and shows its price again. The menu
+ * is in ebx and the anchor at base in esi.
  */
-static void hide_structure_prices(payload_t *payload, uint32_t base, uint32_t show_price)
+static void grey_structures(payload_t *payload, uint32_t base, uint32_t show_price)
 {
     for (unsigned i = 0; i < 7; ++i) {
+        uint32_t button = 0x1e8u + i * BUTTON_SIZE;
         uint32_t cost = STRUCTURE_COSTS + i * CVAR_SIZE - base;
+        EMIT(0x31, 0xc0);                   /* xor eax,eax */
         EMIT(0x81, 0xbe, B4(cost), B4(UNPURCHASABLE)); /* cmp dword [esi+cost],limit */
-        EMIT(0x0f, 0x9d, 0xc0,              /* setge al */
-             0x84, 0xc0);                   /* test al,al */
-        price_text(payload, EBX, 0x1e8u + i * BUTTON_SIZE + BUTTON_TEXT, cost, show_price);
+        EMIT(0x0f, 0x9d, 0xc0);             /* setge al */
+        set_state(payload, EBX, button + BUTTON_STATE, UNPURCHASABLE_ICON_STATE);
+        EMIT(0x85, 0xc0);                   /* test eax,eax */
+        price_text(payload, EBX, button + BUTTON_TEXT, cost, show_price);
     }
 }
 
@@ -311,11 +341,13 @@ static bool build_cgame(payload_t *payload, uint32_t rva, uint32_t next, uint32_
         return false;
     *entry = emit_entry(payload, next);
 
-    /* Data after the entry's jump: whether the button being drawn is
-     * unpurchasable, and the color its image is then drawn in.
+    /* Data after the entry's jump: the runtime address of the tint for
+     * the unpurchasable button being drawn, else 0, and the tints, one
+     * vec4_t per state from UNPURCHASABLE_STATE on.
      */
     uint32_t dimming = EMIT(B4(0u));
-    uint32_t dim = EMIT(B4(DIM), B4(DIM), B4(DIM), B4(0x3f800000u));
+    uint32_t tints = EMIT(B4(DIM), B4(DIM), B4(DIM), B4(0x3f800000u));
+    EMIT(B4(DIM_ICON), B4(DIM_ICON), B4(DIM_ICON), B4(0x3f800000u));
     uint32_t show_price = emit_show_price(payload, rva);
 
     /* In-game shop: call the retail refresh with the same argument
@@ -358,20 +390,18 @@ static bool build_cgame(payload_t *payload, uint32_t rva, uint32_t next, uint32_
     EMIT(0x8b, 0x4c, 0x24, 0x14, 0x5b);     /* retail: mov ecx,[esp+0x14]; pop ebx */
     emit_jump(payload, rva, 0x5121du);
 
-    /* RTS build buttons build1-7, already disabled (grey) while the
-     * structure costs more than the money.
-     */
+    /* RTS build buttons build1-7. */
     uint32_t structures = (uint32_t)payload->size;
     EMIT(0x60);                             /* pushad */
     base = emit_anchor(payload, rva, ESI);
-    hide_structure_prices(payload, base, show_price);
+    grey_structures(payload, base, show_price);
     EMIT(0x61);                             /* popad */
     emit_jump(payload, rva, 0x47820u);           /* the replaced call's target */
 
-    /* RTS structure panel: its upgrade button is already disabled (grey)
-     * while the selected structure's next level costs more than the
-     * money, and its price text is formatted again every frame; empty it
-     * when that price is too high. Like the panel, read type (bits 4-7)
+    /* RTS structure panel: it sets its upgrade button's state and price
+     * text again every frame, so make the button UNPURCHASABLE_ICON_STATE
+     * and empty the text after it while the selected structure's next
+     * level is priced UNPURCHASABLE or more. Like the panel, read type (bits 4-7)
      * and level (bits 0-3) from +0xf0 of the selected cg_entities[] entry
      * (0x420 bytes each); 0x71460 returns the price for type in eax and
      * the next level in ecx, or -1 when there is none.
@@ -395,44 +425,58 @@ static bool build_cgame(payload_t *payload, uint32_t rva, uint32_t next, uint32_
     EMIT(0x3d, B4(UNPURCHASABLE));          /* cmp eax,limit */
     uint32_t affordable = emit_skip_if(payload, 0x7c); /* jl done */
     EMIT(0xc6, 0x87, B4(0x3194u + BUTTON_TEXT), 0); /* mov byte [edi+text],0 */
+    EMIT(0xc7, 0x87, B4(0x3194u + BUTTON_STATE), B4(UNPURCHASABLE_ICON_STATE));
     emit_land(payload, none);
     emit_land(payload, affordable);
     EMIT(0x61, 0xc3);                       /* popad; ret */
 
-    /* Button draw: an UNPURCHASABLE_STATE button is drawn as GREY_FRAME
-     * with dimming set, and gets its state back afterwards; any other
-     * draws as retail does. The retail draw ends in a tail call that
-     * reuses its argument, so the button is kept in a slot of its own.
+    /* Button draw: a button in one of the unpurchasable states is drawn
+     * in the frame 6 - state with dimming pointing at the state's tint,
+     * and gets its state back afterwards; any other draws as retail
+     * does. The retail draw ends in a tail call that reuses its argument,
+     * so the button is kept in a slot of its own.
      */
     uint32_t draw = (uint32_t)payload->size;
     EMIT(0x8b, 0x44, 0x24, 0x04);           /* mov eax,[esp+4] */
-    EMIT(0x81, 0xb8, B4(BUTTON_STATE), B4(UNPURCHASABLE_STATE)); /* cmp [eax+state],4 */
+    EMIT(0x8b, 0x88, B4(BUTTON_STATE));     /* mov ecx,[eax+state] */
+    EMIT(0x83, 0xf9, UNPURCHASABLE_STATE);  /* cmp ecx,4 */
+    uint32_t greyed = emit_skip_if(payload, 0x74); /* je */
+    EMIT(0x83, 0xf9, UNPURCHASABLE_ICON_STATE); /* cmp ecx,5 */
     uint32_t plain = emit_skip_if(payload, 0x75); /* jne retail */
-    EMIT(0xc7, 0x80, B4(BUTTON_STATE), B4(GREY_FRAME)); /* mov [eax+state],grey */
-    base = emit_anchor(payload, rva, ECX);
-    EMIT(0xc6, 0x81, B4(dimming + rva - base), 1); /* mov byte [ecx+dimming],1 */
+    emit_land(payload, greyed);
+    EMIT(0x51);                             /* push ecx: the state */
+    EMIT(0xba, B4(6u),                      /* mov edx,6 */
+         0x29, 0xca);                       /* sub edx,ecx */
+    EMIT(0x89, 0x90, B4(BUTTON_STATE));     /* mov [eax+state],edx: frame */
+    EMIT(0xc1, 0xe1, 0x04);                 /* shl ecx,4: sizeof(vec4_t) */
+    base = emit_anchor(payload, rva, EDX);
+    EMIT(0x8d, 0x8c, 0x0a,                  /* lea ecx,[edx+ecx+tints-4*16] */
+         B4(tints + rva - UNPURCHASABLE_STATE * 16u - base));
+    EMIT(0x89, 0x8a, B4(dimming + rva - base)); /* mov [edx+dimming],ecx */
     EMIT(0x50, 0x50);                       /* push eax; push eax */
     uint32_t drawn = EMIT(0xe8, 0, 0, 0, 0); /* call retail */
     EMIT(0x83, 0xc4, 0x04);                 /* add esp,4 */
     base = emit_anchor(payload, rva, ECX);
-    EMIT(0xc6, 0x81, B4(dimming + rva - base), 0); /* mov byte [ecx+dimming],0 */
-    EMIT(0x58);                             /* pop eax */
-    EMIT(0xc7, 0x80, B4(BUTTON_STATE), B4(UNPURCHASABLE_STATE));
+    EMIT(0xc7, 0x81, B4(dimming + rva - base), B4(0u)); /* mov dword [ecx+dimming],0 */
+    EMIT(0x58,                              /* pop eax */
+         0x59);                             /* pop ecx */
+    EMIT(0x89, 0x88, B4(BUTTON_STATE));     /* mov [eax+state],ecx */
     EMIT(0xc3);                             /* ret */
     emit_land(payload, plain);
     put32(payload->data + drawn + 1, (uint32_t)payload->size - (drawn + 5u));
     EMIT(0x51, 0x8b, 0x44, 0x24, 0x08);     /* retail: push ecx; mov eax,[esp+8] */
     emit_jump(payload, rva, 0x59525u);
 
-    /* Image color: dim instead of white while dimming, else unchanged.
-     * The color is only read by trap_R_SetColor, so pointing eax at dim
-     * is enough; ecx is free like in any call.
+    /* Image color: the tint dimming points at instead of white, else
+     * unchanged. The color is only read by trap_R_SetColor, so pointing
+     * eax at the tint is enough; ecx is free like in any call.
      */
     uint32_t color = (uint32_t)payload->size;
     base = emit_anchor(payload, rva, ECX);
-    EMIT(0x80, 0xb9, B4(dimming + rva - base), 0); /* cmp byte [ecx+dimming],0 */
+    EMIT(0x8b, 0x89, B4(dimming + rva - base)); /* mov ecx,[ecx+dimming] */
+    EMIT(0x85, 0xc9);                       /* test ecx,ecx */
     uint32_t white = emit_skip_if(payload, 0x74); /* je */
-    EMIT(0x8d, 0x81, B4(dim + rva - base)); /* lea eax,[ecx+dim] */
+    EMIT(0x89, 0xc8);                       /* mov eax,ecx */
     emit_land(payload, white);
     emit_jump(payload, rva, 0x33140u);
 
