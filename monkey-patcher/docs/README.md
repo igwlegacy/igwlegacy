@@ -36,6 +36,7 @@ Each functionality has a separate file in `patches/` at the repository root:
 | [valuable_markers.c](../../patches/valuable_markers.c) | Persistent models at every valuable spawn position |
 | [pickup_markers.c](../../patches/pickup_markers.c) | Persistent models at every dynamite, rocket launcher and radio spawn position |
 | [rts_buildable.c](../../patches/rts_buildable.c) | Translucent green overlay on buildable terrain in RTS mode |
+| [toml_waves.c](../../patches/toml_waves.c) | `scripts/waves/<map>-<level>.toml` wave scripts with sequential waves |
 
 Edit the rule definitions in the corresponding file and rebuild. Each file registers its own rules with `REGISTER_CVAR_RULE`, `REGISTER_CODE_RULE`, their plural forms for arrays, or `REGISTER_PAYLOAD_FEATURE`. Comment out a registration to omit those rules. For a new functionality, add its `.c` file to `patches/meson.build` and register its rules in that file; no declarations or patch lists need updating in shared C files. `src/rules.c` collects and validates the registered rules, sorting by registration name for a deterministic payload layout while preserving the order within each array. One functionality can supply several rules.
 
@@ -63,6 +64,32 @@ Immediate death spectating requires the patched `gamex86.dll` on the server and 
 The respawn countdown fix requires only the patched `cgamex86.dll` on the client. `CG_DrawDeathScreen` rounds the remaining milliseconds up to seconds and gives its centerprint the remaining time as its lifetime. The final `SPAWNING IN: 1` therefore covers the last second and expires at the server's advertised respawn deadline. Other centerprints keep their usual lifetime, and the server's respawn timing is unchanged. The two helpers occupy guarded function-alignment padding and use relative calls and jumps, so no new PE relocations are needed.
 
 The centerprint position change requires only the patched `cgamex86.dll` on the client. IGW draws centerprints on a dark band and treats their y argument as an offset from the screen centre in 480-line units, so messages printed with `0`, such as `ROUND STARTS IN` and `AIRSTRIKE PREVENTED!`, covered the crosshair. Those callers now pass `-CENTERPRINT_RAISE` (`120`, a quarter of the screen height), which places the band's centre at a quarter of the screen from the top. Messages that already sit below the crosshair keep their positions. Each change replaces the sign-extended immediate of a `push`, so no relocated operands are touched.
+
+### TOML wave scripts
+
+When `G_LoadWaveScript` is asked for `scripts/waves/<map>-<level>.xml`, the patched `gamex86.dll` first looks for `scripts/waves/<map>-<level>.toml` and, if it exists, loads that instead. It only needs the patched `gamex86.dll` on the server. Without a `.toml`, the `.xml` loads and schedules waves as before.
+
+A TOML script takes every XML section and key, with the XML loader's defaults, caps and clamps. As in the XML, the map's own spots (`SPAWNPOINT`, `SUPERWEAPON`, and the expansion's `deathhand`, `radiospot` and `rocketspot`) come from the level's first script only, the spawn-type spots are raised by 2 units, and `ARTILLERY` is read from every script. Numbers may also be given as strings. Route lists may be a string as in the XML (`"1 2 3"`), a number, or an array (`[1, 2, 3]`). Repeated spot elements become arrays of tables (`[[SPAWNPOINT]]`), and `[ARTILLERY]` and `[SUPERWEAPON]` hold theirs in `spot = [{ x = 1, y = 2, z = 3 }]` or `[[ARTILLERY.spot]]`. Unknown keys print a warning, and invalid scripts stop the map with the file name and line.
+
+Waves don't use the XML's small, medium and large scheduling. The `[[WAVE]]`s are sent one after the other in file order:
+
+```toml
+[[WAVE]]
+startup = 10000   # ms after the round's start
+routes = "1 2 3"
+CONSCRIPT = 31
+WALKER = 1
+
+[[WAVE]]
+startup = 100000  # ms after the previous wave was sent
+size = 2          # the incoming attack sound: 0 small, 1 medium, 2 large
+routes = "1 2 3"
+CONSCRIPT = 30
+```
+
+`startup` is mandatory and counts from the round's start for the first wave and from the previous wave's sending for every later one. After the last wave, that wave repeats every `startup` milliseconds. `size` defaults to `0` and only selects the announcement sound. A wave is sent only while the NPC count is below `sk_npc_treshold`, as in the XML scheduler. A wave that cannot be sent is retried every second and never skipped. A new round starts over from the first wave. A reload during a round, for example after a difficulty change, keeps the current position in the new script. `MINWAVEDIST_*` are still accepted but unused. `SMALLWAVE_TIME` and `MEDIUMWAVE_TIME` don't time the waves but still delay the first spies and engineers as before. Up to 128 waves are allowed, and the first 30 are also copied into the retail wave list.
+
+The loader is C around the vendored [tomlc17](../../vendor/tomlc17). [blob.py](../../patches/toml_waves/blob.py) compiles it with Pixi's `zig cc` freestanding for i686, with the small C library subset in [toml_waves/libc.c](../../patches/toml_waves/libc.c) whose heap functions are the DLL's own CRT `malloc`, `realloc` and `free`. It links the result position independent at address 0 and flattens it into a header the patcher embeds in the payload section. On its first call, the blob applies its own `R_386_RELATIVE` relocations and derives the DLL's runtime base from the RVA the patcher stored in its header, so no PE base relocations are added. A `jmp` replaces `G_LoadWaveScript`'s first six bytes and replays them when no `.toml` exists. In `G_RunWaves`, the call to `G_SpawnRoamers` now goes through a stub that spawns the roamers and then lets the TOML scheduler handle the frame, returning from `G_RunWaves` itself while a TOML script is active.
 
 ### Cursor size
 

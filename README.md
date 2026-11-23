@@ -31,6 +31,8 @@ All five binaries pass through the monkey patcher. Neither executable imports St
 main-menu promotional panel and its update request, and automatically enters the game once loading finishes without requiring a `PLAY!` click.
 
 A sixth difficulty, `PRIMORDIAL` (`sv_difficulty 5`), follows god in the host-game and vote menus, `callvote difficulty` and `changedifficulty`, and shows on the loading screen, scoreboard and server browser. Like the retail levels it reads `skill-p.cfg` from the archive root (`gamedir/skill-p.cfg`, not `gamedir/resources/`) and `scripts/waves/<map>-p.xml`. Survival and teamkill keep their own difficulty handling.
+
+For every difficulty, a `scripts/waves/<map>-<level>.toml` takes precedence over the `.xml` of the same name. It holds the same settings and spots, but its `[[WAVE]]`s are sent one after the other in file order, each one `startup` milliseconds after the previous one, and the last wave repeats. See [monkey-patcher/docs/README.md](monkey-patcher/docs/README.md#toml-wave-scripts) for the format.
 Archive paths start directly with `scripts/`, `sound/`, etc. Sorted entries,
 fixed timestamps and permissions, and a fixed compression level make the
 archive reproducible for unchanged contents in the same Pixi environment.

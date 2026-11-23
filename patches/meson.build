@@ -6,7 +6,40 @@ git_version = vcs_tag(
 	fallback: 'unknown',
 )
 
-patch_sources = [git_version] + files(
+# The TOML wave blob runs inside gamex86.dll, so pixi's zig builds it for
+# i686 regardless of the patcher's own compiler.
+zig = find_program('zig')
+python = find_program('python3')
+toml_waves_blob = custom_target(
+	'toml_waves_blob',
+	input: files(
+		'toml_waves/runtime.c',
+		'toml_waves/libc.c',
+		'toml_waves/waves.c',
+		'../vendor/tomlc17/src/tomlc17.c',
+	),
+	output: 'toml_waves_blob.h',
+	depend_files: files(
+		'toml_waves/blob.py',
+		'toml_waves/link.ld',
+		'toml_waves/game.h',
+		'toml_waves/include/libc.h',
+		'../vendor/tomlc17/src/tomlc17.h',
+	),
+	command: [
+		python, files('toml_waves/blob.py'),
+		'--zig', zig,
+		'--include', meson.current_source_dir() / 'toml_waves/include',
+		'--include', meson.current_source_dir() / 'toml_waves',
+		'--include', meson.project_source_root() / 'vendor/tomlc17/src',
+		'--linker-script', files('toml_waves/link.ld'),
+		'--build-dir', '@PRIVATE_DIR@',
+		'--output', '@OUTPUT@',
+		'@INPUT@',
+	],
+)
+
+patch_sources = [git_version, toml_waves_blob] + files(
 	'version.c',
 	'no_steam.c',
 	'disable_bobbing.c',
@@ -44,6 +77,7 @@ patch_sources = [git_version] + files(
 	'rts_spectator.c',
 	'rts_grid.c',
 	'difficulty_primordial.c',
+	'toml_waves.c',
 	# 'rts_buildable.c',
 
 	# balance changes
