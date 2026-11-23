@@ -29,6 +29,11 @@ foreach module, sources : blob_sources
   foreach dir : blob_include_dirs.get(module, [])
     command += ['--include', dir]
   endforeach
+  # These are among the inputs as well; blob.py builds them with SSE2.
+  sse2_sources = blob_sse2_sources.get(module, [])
+  foreach source : sse2_sources
+    command += ['--sse2', source]
+  endforeach
   command += [
     '--linker-script', files('blob/link.ld'),
     '--build-dir', '@PRIVATE_DIR@',
@@ -38,7 +43,7 @@ foreach module, sources : blob_sources
   ]
   blob_targets += custom_target(
     module + '_blob',
-    input: blob_runtime + sources,
+    input: blob_runtime + sources + sse2_sources,
     output: [module + '_blob.c', module + '_blob.h'],
     depend_files: [files('blob/blob.py', 'blob/link.ld'), blob_headers,
                    blob_depend_files.get(module, [])],

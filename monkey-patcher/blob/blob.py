@@ -19,16 +19,28 @@ import subprocess
 import sys
 from pathlib import Path
 
-# Freestanding, x87 only, and no assumption beyond MSVC's 4-byte stack
-# alignment, as blobs are called from and call into MSVC code.
+# Freestanding and no assumption beyond MSVC's 4-byte stack alignment, as
+# blobs are called from and call into MSVC code.
 CFLAGS = [
     "-target", "x86-freestanding-none", "-march=i686", "-std=c17",
     "-Os", "-fPIE", "-fvisibility=hidden", "-ffreestanding", "-fno-builtin",
     "-fno-stack-protector", "-fno-sanitize=all", "-fno-unwind-tables",
     "-fno-asynchronous-unwind-tables", "-ffunction-sections",
-    "-fdata-sections", "-mno-sse", "-mno-mmx", "-mstack-alignment=4",
+    "-fdata-sections", "-mno-mmx", "-mstack-alignment=4",
     "-Wall", "-Wextra", "-Werror", "-Wno-unused-parameter",
 ]
+
+# Floating point is x87 only by default: a hook in the middle of retail
+# code may run while the retail code keeps values in SSE registers, which
+# blob code must then leave alone.
+X87_CFLAGS = ["-mno-sse"]
+
+# Sources given with --sse2 do their floating point in SSE2 registers
+# instead, where every operation rounds to double exactly as IEEE 754
+# says, whatever precision the game set the x87 to. That makes their
+# results the same bits on every CPU. Only call them from a point where
+# the retail code keeps nothing in SSE registers, like at a call.
+SSE2_CFLAGS = ["-msse2", "-mfpmath=sse"]
 
 # What the patcher itself needs from every blob.
 MAGIC = b"IGWBLOB1"
@@ -131,17 +143,25 @@ def main():
     parser.add_argument("--build-dir", required=True, type=Path)
     parser.add_argument("--source-output", required=True, type=Path)
     parser.add_argument("--header-output", required=True, type=Path)
+    parser.add_argument("--sse2", action="append", default=[],
+                        help="a source among the others to build with SSE2 math")
     parser.add_argument("sources", nargs="+")
     args = parser.parse_args()
     if not re.fullmatch(r"[a-z][a-z0-9_]*", args.module):
         sys.exit(f"blob.py: bad module name {args.module}")
+
+    sse2 = {Path(source).resolve() for source in args.sse2}
+    unknown = sse2 - {Path(source).resolve() for source in args.sources}
+    if unknown:
+        sys.exit(f"blob.py: --sse2 {', '.join(map(str, unknown))} is no source")
 
     args.build_dir.mkdir(parents=True, exist_ok=True)
     objects = []
     for source in args.sources:
         # Sources of different features may share a file name.
         obj = args.build_dir / f"{len(objects)}-{Path(source).stem}.o"
-        run([args.zig, "cc", *CFLAGS, *(f"-I{d}" for d in args.include),
+        math = SSE2_CFLAGS if Path(source).resolve() in sse2 else X87_CFLAGS
+        run([args.zig, "cc", *CFLAGS, *math, *(f"-I{d}" for d in args.include),
              "-c", source, "-o", obj])
         objects.append(obj)
     names = exports(objects)

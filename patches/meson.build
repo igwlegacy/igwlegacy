@@ -21,6 +21,9 @@ blob_include_dirs = {
 blob_depend_files = {
 	'game': files('../vendor/tomlc17/src/tomlc17.h'),
 }
+# Sources of blob_sources that do their floating point with SSE2, see
+# "C blobs" in monkey-patcher/docs/README.md.
+blob_sse2_sources = {}
 
 patch_sources = [git_version] + files(
 	'version.c',
