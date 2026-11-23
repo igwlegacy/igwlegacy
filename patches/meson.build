@@ -78,6 +78,7 @@ patch_sources = [git_version, toml_waves_blob] + files(
 	'rts_grid.c',
 	'difficulty_primordial.c',
 	'toml_waves.c',
+	'max_vehicles.c',
 	# 'rts_buildable.c',
 
 	# balance changes

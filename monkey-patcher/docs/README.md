@@ -37,6 +37,7 @@ Each functionality has a separate file in `patches/` at the repository root:
 | [pickup_markers.c](../../patches/pickup_markers.c) | Persistent models at every dynamite, rocket launcher and radio spawn position |
 | [rts_buildable.c](../../patches/rts_buildable.c) | Translucent green overlay on buildable terrain in RTS mode |
 | [toml_waves.c](../../patches/toml_waves.c) | `scripts/waves/<map>-<level>.toml` wave scripts with sequential waves |
+| [max_vehicles.c](../../patches/max_vehicles.c) | Wave scripts' `MAXCOUNTS` `VEHICLES` capped at 16 instead of 4 |
 
 Edit the rule definitions in the corresponding file and rebuild. Each file registers its own rules with `REGISTER_CVAR_RULE`, `REGISTER_CODE_RULE`, their plural forms for arrays, or `REGISTER_PAYLOAD_FEATURE`. Comment out a registration to omit those rules. For a new functionality, add its `.c` file to `patches/meson.build` and register its rules in that file; no declarations or patch lists need updating in shared C files. `src/rules.c` collects and validates the registered rules, sorting by registration name for a deterministic payload layout while preserving the order within each array. One functionality can supply several rules.
 

@@ -266,7 +266,8 @@ static void parse_max_counts(const toml_datum_t *t)
             GAME(int, GAME_MAX_CONSCRIPTS) = v < 200 ? v : 200;
         } else if (is(key, "VEHICLES")) {
             int v = to_int(d, key);
-            GAME(int, GAME_MAX_VEHICLES) = v < 4 ? v : 4;
+            /* max_vehicles.c raises the XML loader's cap of 4 to 16. */
+            GAME(int, GAME_MAX_VEHICLES) = v < 16 ? v : 16;
         } else if (is(key, "BOTS")) {
             int v = to_int(d, key);
             GAME(int, GAME_MAP_MAX_BOTS) = v < 8 ? v : 8;

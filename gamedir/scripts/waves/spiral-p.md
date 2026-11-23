@@ -40,7 +40,7 @@ Sides: the players are Atelia (team 1), the NPCs the Confederation.
 | setting | value | what it does |
 | --- | --- | --- |
 | `CONSCRIPTS` | 100 | Most live conscripts at once (cap 200, default 200). Each wave is cut to `CONSCRIPTS` minus the live ones before it is sent (`G_SendWave`, 0x6d840), then scaled by the players (see below). |
-| `VEHICLES` | 4 | Most live vehicles at once (scarab, ontos, walker, boss walker; cap 4, default 4). A wave's vehicles are cut to what is left, boss walkers kept first, then ontos, scarabs, walkers. |
+| `VEHICLES` | 4 | Most live vehicles at once (scarab, ontos, walker, boss walker; cap 16, default 4). A wave's vehicles are cut to what is left, boss walkers kept first, then ontos, scarabs, walkers. |
 | `BOTS` | 3 | Friendly bots on the players' team (cap 8, default 8). Once a second a bot is added while humans x 3 + bots < ordered bots + `BOTS` + 3, removed while it is more (`G_CheckMinimumPlayers`): with `BOTS` 3 that is 2 bots for one human and none from two humans on. `bot_minplayers` still caps the bots. |
 | `OFFICERS` | 1 | No effect: clamped to 1, and the roamer spawner sets it to 1 again; there is never more than one officer. |
 | `COMMANDOS` | 100 | Target for the roamer spawner (cap 100, default 100), times the player scale (70 solo). While fewer NPCs live than that, every tick sends 1 to 3 roamers. All live NPCs count, wave conscripts and vehicles too, so while the waves keep 70+ alive no roamers come. |
