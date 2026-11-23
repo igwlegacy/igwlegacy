@@ -7,7 +7,7 @@
  * previous one, the first after the round's start. The last one repeats
  * every startup milliseconds. A wave's size only picks the attack sound.
  */
-#include "game.h"
+#include "gamex86.h"
 #include "tomlc17.h"
 
 #include <stdio.h>
@@ -598,9 +598,8 @@ static void set_defaults(void)
 /* G_LoadWaveScript(xml) for the TOML next to it. Returns -1 without one, so
  * that the payload continues into the XML loader, and 1 once loaded.
  */
-int toml_waves_load(const char *xml)
+BLOB_EXPORT int toml_waves_load(const char *xml)
 {
-    runtime_init();
     active = false;
 
     /* Static, as loading keeps pointing at it for the run's messages. */
@@ -721,9 +720,8 @@ static void spawn_infantry(const game_wave_t *wave)
  * scripts, which continue in G_RunWaves, and 1 when it has handled the
  * frame instead.
  */
-int toml_waves_run(void)
+BLOB_EXPORT int toml_waves_run(void)
 {
-    runtime_init();
     if (!active)
         return 0;
     int time = LEVEL(int, LEVEL_TIME);

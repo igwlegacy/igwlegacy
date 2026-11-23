@@ -56,6 +56,15 @@ void emit_load_address(payload_t *payload, uint32_t rva, unsigned reg, uint32_t 
 /* Append a NUL-terminated string and return its payload offset. */
 uint32_t emit_string(payload_t *payload, const char *text);
 
+/* call and jmp rel32 to the export at offset symbol of blob, the module's
+ * C code from the generated <module>_blob.h. Both first call blob_init(),
+ * which relocates the blob on its first call and returns at once on later
+ * ones; it clobbers eax, ecx, edx and the flags. payload_build() appends
+ * the blob after every feature and resolves the branches.
+ */
+void emit_blob_call(payload_t *payload, const blob_t *blob, uint32_t symbol);
+void emit_blob_jump(payload_t *payload, const blob_t *blob, uint32_t symbol);
+
 /* Point the rel32 of each hook's jmp or call replacement at the payload
  * offset targets[i].
  */

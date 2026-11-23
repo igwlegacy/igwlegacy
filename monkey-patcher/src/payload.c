@@ -1,4 +1,4 @@
-#include "patcher.h"
+#include "emit.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -140,6 +140,33 @@ static void emit_equals(emitter_t *e)
     BYTES(e, 0x31, 0xc0, 0x5f, 0x5e, 0xc3); /* return 0 */
 }
 
+/* Append the blob last, so that its bss falls into the section's virtual
+ * size beyond the file data, and resolve the branches into it.
+ */
+static bool append_blob(payload_t *payload, uint32_t rva)
+{
+    const blob_t *blob = payload->blob;
+    if (!blob)
+        return true;
+    /* Its doubles and tables prefer some alignment; int3 fills the gap. */
+    size_t at = (payload->size + 15) & ~(size_t)15;
+    if (at > PAYLOAD_MAX || blob->size > PAYLOAD_MAX - at) {
+        fprintf(stderr, "The blob does not fit into the payload\n");
+        return false;
+    }
+    memset(payload->data + payload->size, 0xcc, at - payload->size);
+    memcpy(payload->data + at, blob->data, blob->size);
+    payload->size = at + blob->size;
+    payload->bss = blob->bss;
+    /* The header's RVA field follows its 8-byte magic. */
+    put32(payload->data + at + 8, rva + (uint32_t)at);
+    for (size_t i = 0; i < payload->blob_fixup_count; ++i) {
+        const blob_fixup_t *f = &payload->blob_fixups[i];
+        put32(payload->data + f->at, (uint32_t)at + f->symbol - (f->at + 4u));
+    }
+    return true;
+}
+
 bool payload_build(payload_t *payload, const profile_t *p, uint32_t rva)
 {
     record_t records[128] = {0};
@@ -267,7 +294,9 @@ bool payload_build(payload_t *payload, const profile_t *p, uint32_t rva)
             return false;
     }
     link_to(&e, feature_jump, next);
-    if (!e.ok)
+    if (!e.ok) {
         fprintf(stderr, "CVAR payload exceeds its size or fixup limit\n");
-    return e.ok;
+        return false;
+    }
+    return !payload->failed && append_blob(payload, rva);
 }

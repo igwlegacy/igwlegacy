@@ -1,5 +1,7 @@
-/* One flat, writable image at address 0: blob.py copies the load segment
- * as is, including the zeroed bss, into the payload section.
+/* One flat, writable image at address 0: blob.py takes the load segment's
+ * file-backed bytes, which the patcher appends to the payload section. The
+ * bss comes last, so that it lies in the section's virtual size beyond its
+ * file data, which the loader zero-fills.
  */
 PHDRS { blob PT_LOAD FLAGS(7); }
 

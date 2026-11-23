@@ -241,10 +241,19 @@ static bool add_payload(image_t *image)
     }
     /* Too large for comfortable stack use; images are patched one by one. */
     static payload_t payload;
-    if (!payload_build(&payload, image->profile, rva) ||
-        !align_up((uint32_t)payload.size, file_alignment, &raw_size) ||
-        rva > UINT32_MAX - payload.size ||
-        !align_up(rva + (uint32_t)payload.size, section_alignment, &image_size))
+    if (!payload_build(&payload, image->profile, rva))
+        return false;
+    /* The blob's bss only extends the virtual size; the loader zero-fills
+     * whatever lies beyond the file data.
+     */
+    if (payload.bss > UINT32_MAX - payload.size) {
+        fprintf(stderr, "The payload's bss is too large\n");
+        return false;
+    }
+    uint32_t virtual_size = (uint32_t)(payload.size + payload.bss);
+    if (!align_up((uint32_t)payload.size, file_alignment, &raw_size) ||
+        rva > UINT32_MAX - virtual_size ||
+        !align_up(rva + virtual_size, section_alignment, &image_size))
         return false;
     size_t new_size = (size_t)raw + raw_size;
     unsigned char *data = realloc(image->data, new_size);
@@ -258,7 +267,7 @@ static bool add_payload(image_t *image)
     memcpy(data + raw, payload.data, payload.size);
     memset(data + header, 0, 40);
     memcpy(data + header, ".igwmonk", 8);
-    put32(data + header + 8, (uint32_t)payload.size);
+    put32(data + header + 8, virtual_size);
     put32(data + header + 12, rva);
     put32(data + header + 16, raw_size);
     put32(data + header + 20, raw);

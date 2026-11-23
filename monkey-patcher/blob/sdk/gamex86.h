@@ -1,8 +1,10 @@
-/* What the blob knows about the retail gamex86.dll it runs in. Addresses
- * are the retail virtual addresses at the preferred base 0x20000000; the
- * DLL may load elsewhere, so they are only used through GAME_ADDRESS().
+/* What blobs know about the retail gamex86.dll they run in. Addresses are
+ * the retail virtual addresses at the preferred base 0x20000000; the DLL
+ * may load elsewhere, so they are only used through GAME_ADDRESS().
  */
 #pragma once
+
+#include "blob.h"
 
 #include <stdint.h>
 
@@ -23,11 +25,6 @@ enum {
     G_FS_READ = 13,
     G_FS_FCLOSE_FILE = 15,
 };
-
-/* The DLL's statically linked CRT heap. */
-#define GAME_MALLOC 0x2006f824u
-#define GAME_REALLOC 0x2008f7f6u
-#define GAME_FREE 0x2006f6cdu
 
 /* The wave code. G_SendScriptWave takes its wave in esi. */
 #define GAME_SEND_SCRIPT_WAVE 0x2006dc10u
@@ -142,20 +139,14 @@ _Static_assert(sizeof(game_wave_t) == 0x40, "igwWave_t is 0x40 bytes");
 _Static_assert(sizeof(game_spot_t) == 0x18, "igwSpawnSpot_t is 0x18 bytes");
 _Static_assert(sizeof(game_deathhand_spot_t) == 0x18, "igwDeathhandSpot_t is 0x18 bytes");
 
-/* The runtime address of the DLL's image base; runtime.c computes it from
- * the RVA the patcher stores in the blob header.
+/* A retail address, a global's lvalue and a level_locals_t field's lvalue
+ * where the DLL has actually been loaded.
  */
-extern uintptr_t game_base;
-
-#define GAME_ADDRESS(va) ((void *)(game_base + ((va) - GAME_PREFERRED_BASE)))
+#define GAME_ADDRESS(va) ((void *)(blob_image_base + ((va) - GAME_PREFERRED_BASE)))
 #define GAME(type, va) (*(type *)GAME_ADDRESS(va))
 #define LEVEL(type, offset) GAME(type, GAME_LEVEL + (offset))
 
-/* Applies the blob's own relocations once and sets game_base. Every entry
- * point calls it first.
- */
-void runtime_init(void);
-
+/* The engine's syscall entry, for traps: game_syscall(G_PRINT, text). */
 #define game_syscall (*(int (**)(int, ...))GAME_ADDRESS(GAME_SYSCALL))
 
 #pragma GCC visibility pop

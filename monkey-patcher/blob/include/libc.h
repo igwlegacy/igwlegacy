@@ -1,7 +1,7 @@
-/* The C library subset that tomlc17 and the wave loader use. The blob runs
- * inside gamex86.dll without a C library of its own: libc.c implements
- * these, the heap forwards to the DLL's CRT. Every standard header in this
- * directory includes this one, so tomlc17 builds unmodified.
+/* The C library subset that blobs use, so far what tomlc17 and the wave
+ * loader need. A blob runs inside a retail module without a C library of
+ * its own: libc.c implements these, heap.c the heap. Every standard header
+ * in this directory includes this one, so tomlc17 builds unmodified.
  */
 #pragma once
 
@@ -11,7 +11,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-/* Nothing in the blob is exported; hidden symbols need no GOT entries. */
+/* Hidden symbols need no GOT entries. */
 #pragma GCC visibility push(hidden)
 
 /* assert.h: the game has no place to report a failed assertion. */

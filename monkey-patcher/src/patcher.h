@@ -89,10 +89,41 @@ typedef struct {
     unsigned int mode;
 } image_t;
 
+/* A module's C code, built by monkey-patcher/blob/blob.py into a flat,
+ * self-relocating image, see the generated <module>_blob.h.
+ */
+typedef struct {
+    const unsigned char *data;
+    /* File-backed bytes, then zeroed bytes that take no file space. */
+    size_t size, bss;
+    /* The offset of blob_init(), which relocates the blob once. */
+    uint32_t init;
+} blob_t;
+
+/* Upper bound for the calls and jumps of one payload into its blob. */
+#define BLOB_FIXUPS_MAX 64
+
+/* A rel32 at payload offset at that targets offset symbol of the blob. */
+typedef struct {
+    uint32_t at, symbol;
+} blob_fixup_t;
+
 typedef struct {
     unsigned char data[PAYLOAD_MAX];
     size_t size;
     uint32_t entry;
+    /* The blob the module's features call into, appended after them, and
+     * the branches into it that its final position resolves.
+     */
+    const blob_t *blob;
+    blob_fixup_t blob_fixups[BLOB_FIXUPS_MAX];
+    size_t blob_fixup_count;
+    /* Zeroed bytes after data, the blob's bss, for the section's virtual
+     * size only.
+     */
+    size_t bss;
+    /* Set by helpers that cannot report a failure themselves. */
+    bool failed;
 } payload_t;
 
 /* Features chain ahead of the CVAR dispatcher, sharing its EBP argument

@@ -74,6 +74,35 @@ uint32_t emit_string(payload_t *payload, const char *text)
     return payload_append(payload, text, strlen(text) + 1);
 }
 
+/* A rel32 opcode whose displacement payload_build() fills in. */
+static void blob_branch(payload_t *payload, const blob_t *blob, unsigned char opcode,
+                        uint32_t symbol)
+{
+    uint32_t at = EMIT(opcode, 0, 0, 0, 0) + 1u;
+    if (payload->blob && payload->blob != blob) {
+        fputs("Payload features of one module call into different blobs\n", stderr);
+        payload->failed = true;
+    } else if (payload->blob_fixup_count == BLOB_FIXUPS_MAX) {
+        fputs("Payload features call into their blob too often\n", stderr);
+        payload->failed = true;
+    } else {
+        payload->blob = blob;
+        payload->blob_fixups[payload->blob_fixup_count++] = (blob_fixup_t){ at, symbol };
+    }
+}
+
+void emit_blob_call(payload_t *payload, const blob_t *blob, uint32_t symbol)
+{
+    blob_branch(payload, blob, 0xe8, blob->init);
+    blob_branch(payload, blob, 0xe8, symbol);
+}
+
+void emit_blob_jump(payload_t *payload, const blob_t *blob, uint32_t symbol)
+{
+    blob_branch(payload, blob, 0xe8, blob->init);
+    blob_branch(payload, blob, 0xe9, symbol);
+}
+
 void resolve_hooks(code_rule_t *hooks, size_t count, const uint32_t *targets, uint32_t rva)
 {
     for (size_t i = 0; i < count; ++i)

@@ -2,8 +2,6 @@
  * tomlc17 and waves.c need is here, for the "C" locale. Nothing divides
  * 64-bit values, which on i386 would need compiler-rt's helpers.
  */
-#include "game.h"
-
 #include <ctype.h>
 #include <errno.h>
 #include <locale.h>
@@ -32,22 +30,6 @@ struct lconv *localeconv(void)
 char *strerror(int error)
 {
     return error == ERANGE ? "result out of range" : "error";
-}
-
-/* The CRT heap of gamex86.dll itself, so that memory never crosses CRTs. */
-void *malloc(size_t size)
-{
-    return ((void *(*)(size_t))GAME_ADDRESS(GAME_MALLOC))(size);
-}
-
-void *realloc(void *pointer, size_t size)
-{
-    return ((void *(*)(void *, size_t))GAME_ADDRESS(GAME_REALLOC))(pointer, size);
-}
-
-void free(void *pointer)
-{
-    ((void (*)(void *))GAME_ADDRESS(GAME_FREE))(pointer);
 }
 
 /* The loader never reads files through stdio. */
