@@ -1,0 +1,63 @@
+
+name: C/C++ CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  DEBUG: "1"
+  
+jobs:
+  build-ubuntu:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-go@v5
+      with:
+        cache: false
+    - name: install toml-test
+      run: go install github.com/toml-lang/toml-test/v2/cmd/toml-test@latest
+    - name: install de_DE locale (for test/locale)
+      run: sudo locale-gen de_DE.UTF-8
+    - name: make clean all
+      run: make clean all
+    - name: make test
+      run: make test
+    - name: make install
+      run: make install prefix=./tmp
+
+
+  build-c99:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        cc: [gcc, clang]
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: compile with -std=c99
+      run: ${{ matrix.cc }} -std=c99 -Wall -Wextra -pedantic -Werror -c src/tomlc17.c -o /dev/null
+
+
+  build-macos:
+    runs-on: macos-latest
+  
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-go@v5
+      with:
+        go-version: '1.21'  # or whatever version you need
+        cache: false
+    - name: install toml-test
+      run: go install github.com/toml-lang/toml-test/v2/cmd/toml-test@latest
+    - name: make clean all
+      run: make clean all
+    - name: make test
+      run: make test
+    - name: make install
+      run: make install prefix=./tmp
+
