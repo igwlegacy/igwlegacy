@@ -32,6 +32,14 @@ enum {
 /* The wave code. G_SendScriptWave takes its wave in esi. */
 #define GAME_SEND_SCRIPT_WAVE 0x2006dc10u
 #define GAME_WAVE_SOUND 0x2006dc90u
+/* AddNPC(route, wave, class, ratio), G_PickWaveRoute(routes, vehicles,
+ * &route) and G_PickRoute(), all cdecl, and igw_numSplines, the number of
+ * routes AddNPC can take.
+ */
+#define GAME_ADD_NPC 0x200499b0u
+#define GAME_PICK_WAVE_ROUTE 0x2006da10u
+#define GAME_PICK_ROUTE 0x2006d320u
+#define GAME_NUM_SPLINES 0x2011c880u
 
 /* igw_xml.cpp's globals. */
 #define GAME_WAVES 0x2011c0b8u
@@ -88,6 +96,25 @@ enum {
 #define MAX_ROCKET_SPOTS 10
 #define MAX_ROUTES 24
 #define NUM_NPC_CLASSES 13
+
+/* igwWave_t.counts' indices, the XML's class order. AddNPC's class is the
+ * index + 1.
+ */
+enum {
+    NPC_CONSCRIPT,
+    NPC_GRENADIER,
+    NPC_HLEGIONNAIRE,
+    NPC_OFFICER,
+    NPC_SCARAB,
+    NPC_ONTOS,
+    NPC_WALKER,
+    NPC_BOSS_WALKER,
+    NPC_SPY,
+    NPC_ENGINEER,
+    NPC_BOMBER,
+    NPC_CIV,
+    NPC_HERRAD,
+};
 
 /* igwWave_t, 0x40 bytes. */
 typedef struct {

@@ -603,7 +603,8 @@ int toml_waves_load(const char *xml)
     runtime_init();
     active = false;
 
-    char name[128];
+    /* Static, as loading keeps pointing at it for the run's messages. */
+    static char name[128];
     size_t length = strlen(xml);
     if (length < 4 || length + 2 > sizeof(name) || strcmp(xml + length - 4, ".xml"))
         return -1;
@@ -674,6 +675,48 @@ static int send_script_wave(game_wave_t *wave)
     return result;
 }
 
+/* The route of a wave's grenadiers, legionnaires and herrads: one of its
+ * routes, or any without; -1 if the map has none. G_PickWaveRoute prefers
+ * the forced route like G_PickRoute does.
+ */
+static int pick_route(const game_wave_t *wave)
+{
+    if (GAME(int, GAME_NUM_SPLINES) <= 0)
+        return -1;
+    if (!wave->routes)
+        return ((int (*)(void))GAME_ADDRESS(GAME_PICK_ROUTE))();
+    int route = 0;
+    ((int (*)(int, int, int *))GAME_ADDRESS(GAME_PICK_WAVE_ROUTE))(wave->routes, 0, &route);
+    return route;
+}
+
+/* G_SendScriptWave sends only the conscripts and vehicles. The wave's
+ * grenadiers, legionnaires and herrads start together at one route's
+ * start and roam from there, as G_SpawnRoamers' do. Like G_AddNPCWave,
+ * the first that AddNPC refuses ends them.
+ */
+static void spawn_infantry(const game_wave_t *wave)
+{
+    static const int classes[] = { NPC_GRENADIER, NPC_HLEGIONNAIRE, NPC_HERRAD };
+    void *(*add_npc)(int, int, int, float) = GAME_ADDRESS(GAME_ADD_NPC);
+    int route = -2;
+    for (size_t c = 0; c < sizeof(classes) / sizeof(classes[0]); ++c) {
+        for (int i = 0; i < wave->counts[classes[c]]; ++i) {
+            if (route == -2)
+                route = pick_route(wave);
+            /* AddNPC does not check the route itself. */
+            if (route < 0 || route >= GAME(int, GAME_NUM_SPLINES)) {
+                print("^3WARNING: %s: route %d does not exist on this map\n", loading,
+                      route + 1);
+                return;
+            }
+            /* No wave, and for a grenadier a shield by the structures. */
+            if (!add_npc(route, -1, classes[c] + 1, 0.0f))
+                return;
+        }
+    }
+}
+
 /* G_RunWaves after G_SpawnRoamers, for TOML scripts. Returns 0 for XML
  * scripts, which continue in G_RunWaves, and 1 when it has handled the
  * frame instead.
@@ -699,13 +742,27 @@ int toml_waves_run(void)
         return 1;
 
     /* Like the XML scheduler, send only with room for more NPCs. A wave
-     * without room or without a usable route waits, it is not skipped.
+     * without room, or whose conscripts and vehicles find no room or
+     * route, waits; it is not skipped.
      */
     int npcs = GAME(int, GAME_NUM_CONSCRIPTS) + GAME(int, GAME_NUM_VEHICLES) * 4;
-    if (npcs >= GAME(int, GAME_NPC_THRESHOLD) || !send_script_wave(&waves[index])) {
+    if (npcs >= GAME(int, GAME_NPC_THRESHOLD)) {
         retry_time = time + RETRY_TIME;
         return 1;
     }
+    game_wave_t *wave = &waves[index];
+    const int *n = wave->counts;
+    /* G_SendWave reports whether any conscripts, scarabs, ontos or boss
+     * walkers went out, never the walkers, so a wave of walkers alone
+     * counts as sent either way.
+     */
+    bool reported = n[NPC_CONSCRIPT] > 0 || n[NPC_SCARAB] > 0 || n[NPC_ONTOS] > 0 ||
+                    n[NPC_BOSS_WALKER] > 0;
+    if ((reported || n[NPC_WALKER] > 0) && !send_script_wave(wave) && reported) {
+        retry_time = time + RETRY_TIME;
+        return 1;
+    }
+    spawn_infantry(wave);
     ((void (*)(int))GAME_ADDRESS(GAME_WAVE_SOUND))(sizes[index]);
     LEVEL(int, LEVEL_LAST_WAVE_TIME) = time;
     last_sent = time;
