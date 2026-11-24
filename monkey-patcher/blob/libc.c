@@ -1,7 +1,9 @@
-/* The freestanding C library subset declared by include/libc.h. Only what
- * tomlc17 and waves.c need is here, for the "C" locale. Nothing divides
- * 64-bit values, which on i386 would need compiler-rt's helpers.
+/* The freestanding C library subset declared by include/libc.h, for the
+ * "C" locale. strtod() and the digits of %e, %f and %g are in decimal.c,
+ * the 64-bit division helpers in int64.c.
  */
+#include "decimal.h"
+
 #include <ctype.h>
 #include <errno.h>
 #include <locale.h>
@@ -16,6 +18,11 @@ int isalpha(int c) { return (c | 32) >= 'a' && (c | 32) <= 'z'; }
 int isalnum(int c) { return isdigit(c) || isalpha(c); }
 int isprint(int c) { return c >= 0x20 && c < 0x7f; }
 int isspace(int c) { return c == ' ' || (c >= '\t' && c <= '\r'); }
+int iscntrl(int c) { return (c >= 0 && c < 0x20) || c == 0x7f; }
+int isgraph(int c) { return c > 0x20 && c < 0x7f; }
+int islower(int c) { return c >= 'a' && c <= 'z'; }
+int isupper(int c) { return c >= 'A' && c <= 'Z'; }
+int ispunct(int c) { return isgraph(c) && !isalnum(c); }
 int isxdigit(int c) { return isdigit(c) || ((c | 32) >= 'a' && (c | 32) <= 'f'); }
 int tolower(int c) { return c >= 'A' && c <= 'Z' ? c + 32 : c; }
 int toupper(int c) { return c >= 'a' && c <= 'z' ? c - 32 : c; }
@@ -32,13 +39,50 @@ char *strerror(int error)
     return error == ERANGE ? "result out of range" : "error";
 }
 
-/* The loader never reads files through stdio. */
+_Noreturn void abort(void)
+{
+    __builtin_trap();
+}
+
+time_t time(time_t *now)
+{
+    if (now)
+        *now = -1;
+    return -1;
+}
+
+clock_t clock(void)
+{
+    return -1;
+}
+
+/* No blob reads or writes files through stdio. */
+FILE *const stdin = NULL;
+FILE *const stdout = NULL;
+FILE *const stderr = NULL;
+
 FILE *fopen(const char *name, const char *mode)
 {
     (void)name, (void)mode;
     errno = EINVAL;
     return NULL;
 }
+
+FILE *freopen(const char *name, const char *mode, FILE *file)
+{
+    (void)name, (void)mode, (void)file;
+    errno = EINVAL;
+    return NULL;
+}
+
+size_t fwrite(const void *buffer, size_t size, size_t count, FILE *file)
+{
+    (void)buffer, (void)size, (void)count, (void)file;
+    return 0;
+}
+
+int getc(FILE *file) { (void)file; return EOF; }
+int fflush(FILE *file) { (void)file; return EOF; }
 
 size_t fread(void *buffer, size_t size, size_t count, FILE *file)
 {
@@ -140,6 +184,34 @@ size_t strspn(const char *text, const char *accept)
     return n;
 }
 
+char *strpbrk(const char *text, const char *accept)
+{
+    for (; *text; ++text)
+        if (strchr(accept, *text))
+            return (char *)text;
+    return NULL;
+}
+
+char *strstr(const char *text, const char *part)
+{
+    size_t length = strlen(part);
+    for (; *text; ++text)
+        if (!strncmp(text, part, length))
+            return (char *)text;
+    return length ? NULL : (char *)text;
+}
+
+char *strcpy(char *destination, const char *source)
+{
+    return memcpy(destination, source, strlen(source) + 1);
+}
+
+/* The "C" locale collates by byte value. */
+int strcoll(const char *a, const char *b)
+{
+    return strcmp(a, b);
+}
+
 static int digit_value(int c)
 {
     if (isdigit(c))
@@ -208,90 +280,6 @@ int atoi(const char *text)
     return (int)strtol(text, NULL, 10);
 }
 
-/* The powers 10^(2^i), for scaling by any decimal exponent below 512. */
-static const double powers[] = { 1e1, 1e2, 1e4, 1e8, 1e16, 1e32, 1e64, 1e128, 1e256 };
-
-/* Decimal floats with up to 18 significant digits, plus inf and nan. That
- * is not always correctly rounded, which wave scripts never notice.
- */
-double strtod(const char *text, char **end)
-{
-    const char *p = text;
-    while (isspace((unsigned char)*p))
-        ++p;
-    bool negative = *p == '-';
-    if (*p == '+' || *p == '-')
-        ++p;
-    if ((p[0] | 32) == 'i' && (p[1] | 32) == 'n' && (p[2] | 32) == 'f') {
-        p += 3;
-        if (!strncmp(p, "inity", 5))
-            p += 5;
-        if (end)
-            *end = (char *)p;
-        return negative ? -INFINITY : INFINITY;
-    }
-    if ((p[0] | 32) == 'n' && (p[1] | 32) == 'a' && (p[2] | 32) == 'n') {
-        if (end)
-            *end = (char *)p + 3;
-        return negative ? -NAN : NAN;
-    }
-
-    long long mantissa = 0;
-    int digits = 0, exponent = 0;
-    bool any = false;
-    for (; isdigit((unsigned char)*p); ++p, any = true) {
-        if (digits < 18 && (mantissa || *p != '0'))
-            mantissa = mantissa * 10 + (*p - '0'), ++digits;
-        else if (mantissa)
-            ++exponent;
-    }
-    if (*p == '.') {
-        for (++p; isdigit((unsigned char)*p); ++p, any = true) {
-            if (digits < 18 && (mantissa || *p != '0'))
-                mantissa = mantissa * 10 + (*p - '0'), ++digits, --exponent;
-            else if (!mantissa)
-                --exponent;
-        }
-    }
-    if (!any) {
-        if (end)
-            *end = (char *)text;
-        return 0;
-    }
-    if ((*p | 32) == 'e') {
-        const char *e = p + 1;
-        bool down = *e == '-';
-        if (*e == '+' || *e == '-')
-            ++e;
-        if (isdigit((unsigned char)*e)) {
-            int n = 0;
-            for (; isdigit((unsigned char)*e); ++e)
-                if (n < 10000)
-                    n = n * 10 + (*e - '0');
-            exponent += down ? -n : n;
-            p = e;
-        }
-    }
-    if (end)
-        *end = (char *)p;
-
-    double value = (double)mantissa;
-    if (value != 0) {
-        bool down = exponent < 0;
-        unsigned n = (unsigned)(down ? -exponent : exponent);
-        if (n >= 512) {
-            value = down ? 0 : INFINITY;
-        } else {
-            for (unsigned i = 0; n; ++i, n >>= 1)
-                if (n & 1)
-                    value = down ? value / powers[i] : value * powers[i];
-        }
-        if (value == 0 || isinf(value))
-            errno = ERANGE;
-    }
-    return negative ? -value : value;
-}
-
 /* A bounded writer that keeps counting past the end, as vsnprintf must. */
 typedef struct {
     char *at;
@@ -308,63 +296,231 @@ static void put(sink_t *sink, char c)
     ++sink->count;
 }
 
-static void put_padded(sink_t *sink, const char *text, size_t length, int width,
-                       bool left, char pad)
-{
-    int fill = width > (int)length ? width - (int)length : 0;
-    if (!left)
-        for (; fill; --fill)
-            put(sink, pad);
-    for (size_t i = 0; i < length; ++i)
-        put(sink, text[i]);
-    for (; fill; --fill)
-        put(sink, ' ');
-}
-
-/* Digits of a 64-bit value by repeated subtraction of powers, which needs
- * no 64-bit division. Returns the start of the digits within buffer.
+/* Digits of a 64-bit value, written backwards ending at end; returns the
+ * first digit. Bases 8 and 16 shift; base 10 divides 32 bits at a time
+ * by 10^9 so that only 32-bit hardware divisions are needed.
  */
-static char *format_unsigned(char *buffer, unsigned long long value, unsigned base, bool upper)
+static char *format_unsigned(char *end, unsigned long long value, unsigned base, bool upper)
 {
-    char *p = buffer + 24;
-    *p = 0;
-    if (base == 16) {
-        const char *hex = upper ? "0123456789ABCDEF" : "0123456789abcdef";
+    char *p = end;
+    if (base != 10) {
+        const char *digits = upper ? "0123456789ABCDEF" : "0123456789abcdef";
+        unsigned bits = base == 16 ? 4 : 3;
         do
-            *--p = hex[value & 15];
-        while (value >>= 4);
+            *--p = digits[value & (base - 1)];
+        while (value >>= bits);
         return p;
     }
-    if (value <= UINT32_MAX) {
-        uint32_t small = (uint32_t)value;
-        do
-            *--p = (char)('0' + small % 10);
-        while (small /= 10);
-        return p;
+    while (value > UINT32_MAX) {
+        /* value / 10^9 by long division over 32-bit halves. */
+        uint32_t high = (uint32_t)(value >> 32), low = (uint32_t)value;
+        uint32_t quotient_high = high / 1000000000u, rest = high % 1000000000u;
+        uint32_t quotient_low, chunk;
+        __asm__("divl %4" : "=a"(quotient_low), "=d"(chunk)
+                : "a"(low), "d"(rest), "rm"(1000000000u));
+        value = (unsigned long long)quotient_high << 32 | quotient_low;
+        for (int i = 0; i < 9; ++i, chunk /= 10)
+            *--p = (char)('0' + chunk % 10);
     }
-    /* Leading digits first: count how often each power of ten fits. */
-    static const unsigned long long tens[] = {
-        10000000000000000000ULL, 1000000000000000000ULL, 100000000000000000ULL,
-        10000000000000000ULL, 1000000000000000ULL, 100000000000000ULL,
-        10000000000000ULL, 1000000000000ULL, 100000000000ULL, 10000000000ULL,
-        1000000000ULL, 100000000ULL, 10000000ULL, 1000000ULL, 100000ULL,
-        10000ULL, 1000ULL, 100ULL, 10ULL, 1ULL,
-    };
-    p = buffer;
-    bool started = false;
-    for (size_t i = 0; i < sizeof(tens) / sizeof(tens[0]); ++i) {
-        char digit = '0';
-        while (value >= tens[i])
-            value -= tens[i], ++digit;
-        if (digit != '0' || started || tens[i] == 1)
-            *p++ = digit, started = true;
-    }
-    *p = 0;
-    return buffer;
+    uint32_t small = (uint32_t)value;
+    do
+        *--p = (char)('0' + small % 10);
+    while (small /= 10);
+    return p;
 }
 
-/* The conversions %s %c %d %i %u %x %X %p %%, with the flags '-' and '0',
- * a width, a precision for %s, and the length modifiers l, ll and z.
+/* How one conversion is to be laid out. */
+typedef struct {
+    bool left;      /* '-' */
+    bool plus;      /* '+' */
+    bool space;     /* ' ' */
+    bool alternate; /* '#' */
+    bool zero;      /* '0' */
+    int width;
+    int precision;  /* -1 without one */
+} spec_t;
+
+/* Pads the field of prefix and length more characters to the width:
+ * spaces before or after it, or zeros between the prefix and the rest.
+ * Call it once before writing the rest with before set and once after.
+ */
+static void pad(sink_t *sink, const spec_t *spec, const char *prefix, int length,
+                bool zeros, bool before)
+{
+    int fill = spec->width - (int)strlen(prefix) - length;
+    if (before) {
+        if (!spec->left && !zeros)
+            for (int i = 0; i < fill; ++i)
+                put(sink, ' ');
+        for (; *prefix; ++prefix)
+            put(sink, *prefix);
+        if (!spec->left && zeros)
+            for (int i = 0; i < fill; ++i)
+                put(sink, '0');
+    } else if (spec->left) {
+        for (int i = 0; i < fill; ++i)
+            put(sink, ' ');
+    }
+}
+
+static void format_integer(sink_t *sink, const spec_t *spec, char conversion,
+                           unsigned long long magnitude, bool negative)
+{
+    char buffer[32];
+    char *end = buffer + sizeof(buffer);
+    unsigned base = conversion == 'o' ? 8 : conversion == 'x' || conversion == 'X' ||
+                    conversion == 'p' ? 16 : 10;
+    char *digits = format_unsigned(end, magnitude, base, conversion == 'X');
+    int length = (int)(end - digits);
+    /* A precision is the minimum digit count; 0 prints nothing for 0. */
+    if (!spec->precision && !magnitude)
+        length = 0;
+    int zeros = spec->precision > length ? spec->precision - length : 0;
+    char prefix[3] = "";
+    if (negative)
+        prefix[0] = '-';
+    else if (spec->plus && (conversion == 'd' || conversion == 'i'))
+        prefix[0] = '+';
+    else if (spec->space && (conversion == 'd' || conversion == 'i'))
+        prefix[0] = ' ';
+    if (conversion == 'p' || (spec->alternate && magnitude &&
+                              (conversion == 'x' || conversion == 'X')))
+        prefix[0] = '0', prefix[1] = conversion == 'X' ? 'X' : 'x';
+    if (spec->alternate && conversion == 'o' && !zeros && (!length || *digits != '0'))
+        zeros = 1;
+    bool zero_pad = spec->zero && spec->precision < 0;
+    pad(sink, spec, prefix, zeros + length, zero_pad, true);
+    for (int i = 0; i < zeros; ++i)
+        put(sink, '0');
+    for (int i = 0; i < length; ++i)
+        put(sink, digits[i]);
+    pad(sink, spec, prefix, zeros + length, zero_pad, false);
+}
+
+/* Writes or, without a sink, only counts the characters of a float body. */
+typedef struct {
+    sink_t *sink;
+    int count;
+} body_t;
+
+static void emit(body_t *body, char c)
+{
+    if (body->sink)
+        put(body->sink, c);
+    ++body->count;
+}
+
+/* The digit for the place 10^place of a rounded value. */
+static char digit_at(const decimal_t *value, int place)
+{
+    int index = value->exponent - place;
+    return (char)('0' + (index >= 0 && index < value->n ? value->d[index] : 0));
+}
+
+/* The digits of %f with fraction digits after the point, or of %e with
+ * fraction digits after the first one, without the sign.
+ */
+static void float_body(body_t *body, const decimal_t *value, bool exponential,
+                       int fraction, bool point, bool upper)
+{
+    if (exponential) {
+        emit(body, digit_at(value, value->exponent));
+        if (point)
+            emit(body, '.');
+        for (int i = 1; i <= fraction; ++i)
+            emit(body, digit_at(value, value->exponent - i));
+        emit(body, upper ? 'E' : 'e');
+        int exponent = value->exponent;
+        emit(body, exponent < 0 ? '-' : '+');
+        if (exponent < 0)
+            exponent = -exponent;
+        char buffer[8];
+        char *end = buffer + sizeof(buffer);
+        char *digits = format_unsigned(end, (unsigned)exponent, 10, false);
+        if (end - digits < 2)
+            emit(body, '0');
+        for (; digits < end; ++digits)
+            emit(body, *digits);
+        return;
+    }
+    for (int place = value->exponent > 0 ? value->exponent : 0; place >= 0; --place)
+        emit(body, digit_at(value, place));
+    if (point)
+        emit(body, '.');
+    for (int i = 1; i <= fraction; ++i)
+        emit(body, digit_at(value, -i));
+}
+
+/* %e, %f and %g with exact digits, rounded half to even like glibc's and
+ * musl's printf in the default rounding mode, see decimal.c.
+ */
+static void format_float(sink_t *sink, const spec_t *spec, char conversion, double number)
+{
+    union {
+        double value;
+        uint64_t bits;
+    } in = { number };
+    bool negative = in.bits >> 63;
+    bool upper = conversion >= 'A' && conversion <= 'Z';
+    char lower = (char)(conversion | 32);
+    char prefix[2] = "";
+    if (negative)
+        prefix[0] = '-';
+    else if (spec->plus)
+        prefix[0] = '+';
+    else if (spec->space)
+        prefix[0] = ' ';
+
+    if ((in.bits >> 52 & 0x7ff) == 0x7ff) {
+        const char *text = in.bits << 12 ? (upper ? "NAN" : "nan") : (upper ? "INF" : "inf");
+        pad(sink, spec, prefix, 3, false, true);
+        for (; *text; ++text)
+            put(sink, *text);
+        pad(sink, spec, prefix, 3, false, false);
+        return;
+    }
+
+    decimal_t value;
+    decimal_from_double(&value, in.bits);
+    int precision = spec->precision < 0 ? 6 : spec->precision;
+    bool exponential = lower == 'e';
+    int fraction = precision;
+    if (lower == 'f') {
+        decimal_round(&value, value.exponent + 1 + precision);
+    } else if (lower == 'e') {
+        decimal_round(&value, precision + 1);
+    } else {
+        /* %g: %e's exponent X after rounding to P significant digits picks
+         * %f with P - 1 - X fraction digits if P > X >= -4, else %e with
+         * P - 1. Without '#', trailing zeros and a bare point go.
+         */
+        int significant = precision ? precision : 1;
+        decimal_round(&value, significant);
+        int x = value.exponent;
+        exponential = !(significant > x && x >= -4);
+        fraction = exponential ? significant - 1 : significant - 1 - x;
+        if (!spec->alternate) {
+            /* The rounded value has no trailing zeros. */
+            int needed = exponential ? value.n - 1 : value.n - 1 - x;
+            if (needed < 0)
+                needed = 0;
+            if (fraction > needed)
+                fraction = needed;
+        }
+    }
+    bool point = fraction > 0 || spec->alternate;
+    body_t count = { NULL, 0 };
+    float_body(&count, &value, exponential, fraction, point, upper);
+    pad(sink, spec, prefix, count.count, spec->zero, true);
+    body_t out = { sink, 0 };
+    float_body(&out, &value, exponential, fraction, point, upper);
+    pad(sink, spec, prefix, count.count, spec->zero, false);
+}
+
+/* printf() formatting with the flags '-', '+', ' ', '#' and '0', a width
+ * and a precision (both may be '*'), the length modifiers hh, h, l, ll, j,
+ * z, t and L, and the conversions d i u o x X c s p e E f F g G and %%.
+ * %p prints 0x and hex digits. An unknown conversion ends the output.
  */
 int vsnprintf(char *buffer, size_t size, const char *format, va_list args)
 {
@@ -374,71 +530,113 @@ int vsnprintf(char *buffer, size_t size, const char *format, va_list args)
             put(&sink, *f);
             continue;
         }
-        bool left = false;
-        char pad = ' ';
-        for (++f; *f == '-' || *f == '0'; ++f) {
+        spec_t spec = { false, false, false, false, false, 0, -1 };
+        for (++f;; ++f) {
             if (*f == '-')
-                left = true;
+                spec.left = true;
+            else if (*f == '+')
+                spec.plus = true;
+            else if (*f == ' ')
+                spec.space = true;
+            else if (*f == '#')
+                spec.alternate = true;
+            else if (*f == '0')
+                spec.zero = true;
             else
-                pad = '0';
+                break;
         }
-        int width = 0, precision = -1;
         if (*f == '*') {
-            width = va_arg(args, int), ++f;
+            spec.width = va_arg(args, int), ++f;
+            if (spec.width < 0)
+                spec.left = true, spec.width = -spec.width;
         } else {
             for (; isdigit((unsigned char)*f); ++f)
-                width = width * 10 + (*f - '0');
+                spec.width = spec.width * 10 + (*f - '0');
         }
         if (*f == '.') {
-            precision = 0;
+            spec.precision = 0;
             if (*++f == '*') {
-                precision = va_arg(args, int), ++f;
+                spec.precision = va_arg(args, int), ++f;
+                if (spec.precision < 0)
+                    spec.precision = -1;
             } else {
                 for (; isdigit((unsigned char)*f); ++f)
-                    precision = precision * 10 + (*f - '0');
+                    spec.precision = spec.precision * 10 + (*f - '0');
             }
         }
-        int longs = 0;
-        for (; *f == 'l' || *f == 'z'; ++f)
-            ++longs;
+        /* char and short arrive promoted to int; long, size_t and
+         * ptrdiff_t are 32 bits wide here.
+         */
+        int longs = 0, shorts = 0;
+        for (;; ++f) {
+            if (*f == 'l')
+                ++longs;
+            else if (*f == 'j')
+                longs = 2;
+            else if (*f == 'h')
+                ++shorts;
+            else if (*f != 'z' && *f != 't' && *f != 'L')
+                break;
+        }
 
-        char digits[32];
         switch (*f) {
         case 's': {
             const char *text = va_arg(args, const char *);
             if (!text)
                 text = "(null)";
-            size_t length = 0;
-            while (text[length] && (precision < 0 || (int)length < precision))
+            int length = 0;
+            while (text[length] && (spec.precision < 0 || length < spec.precision))
                 ++length;
-            put_padded(&sink, text, length, width, left, ' ');
+            pad(&sink, &spec, "", length, false, true);
+            for (int i = 0; i < length; ++i)
+                put(&sink, text[i]);
+            pad(&sink, &spec, "", length, false, false);
             break;
         }
-        case 'c':
-            digits[0] = (char)va_arg(args, int);
-            put_padded(&sink, digits, 1, width, left, ' ');
+        case 'c': {
+            char c = (char)va_arg(args, int);
+            pad(&sink, &spec, "", 1, false, true);
+            put(&sink, c);
+            pad(&sink, &spec, "", 1, false, false);
             break;
+        }
         case 'd':
         case 'i': {
             long long value = longs >= 2 ? va_arg(args, long long) : va_arg(args, int);
-            unsigned long long magnitude = value < 0 ? 0 - (unsigned long long)value
-                                                     : (unsigned long long)value;
-            char *text = format_unsigned(digits + 1, magnitude, 10, false);
-            if (value < 0)
-                *--text = '-';
-            put_padded(&sink, text, strlen(text), width, left, left ? ' ' : pad);
+            if (shorts == 1)
+                value = (short)value;
+            else if (shorts >= 2)
+                value = (signed char)value;
+            format_integer(&sink, &spec, *f,
+                           value < 0 ? 0 - (unsigned long long)value : (unsigned long long)value,
+                           value < 0);
             break;
         }
         case 'u':
+        case 'o':
         case 'x':
-        case 'X':
-        case 'p': {
-            unsigned long long value = *f == 'p' ? (uintptr_t)va_arg(args, void *) :
-                longs >= 2 ? va_arg(args, unsigned long long) : va_arg(args, unsigned);
-            char *text = format_unsigned(digits, value, *f == 'u' ? 10 : 16, *f == 'X');
-            put_padded(&sink, text, strlen(text), width, left, left ? ' ' : pad);
+        case 'X': {
+            unsigned long long value = longs >= 2 ? va_arg(args, unsigned long long)
+                                                  : va_arg(args, unsigned);
+            if (shorts == 1)
+                value = (unsigned short)value;
+            else if (shorts >= 2)
+                value = (unsigned char)value;
+            format_integer(&sink, &spec, *f, value, false);
             break;
         }
+        case 'p':
+            spec.precision = -1;
+            format_integer(&sink, &spec, 'p', (uintptr_t)va_arg(args, void *), false);
+            break;
+        case 'e':
+        case 'E':
+        case 'f':
+        case 'F':
+        case 'g':
+        case 'G':
+            format_float(&sink, &spec, *f, va_arg(args, double));
+            break;
         case '%':
             put(&sink, '%');
             break;

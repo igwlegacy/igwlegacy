@@ -3,8 +3,10 @@
 # <module>_blob.c; payload features include <module>_blob.h.
 zig = find_program('zig')
 python = find_program('python3')
-blob_runtime = files('blob/runtime.c', 'blob/heap.c', 'blob/libc.c')
+blob_runtime = files('blob/runtime.c', 'blob/heap.c', 'blob/libc.c',
+                     'blob/decimal.c', 'blob/int64.c', 'blob/setjmp.c')
 blob_headers = files(
+  'blob/decimal.h',
   'blob/include/assert.h',
   'blob/include/blob.h',
   'blob/include/ctype.h',
@@ -12,9 +14,11 @@ blob_headers = files(
   'blob/include/libc.h',
   'blob/include/locale.h',
   'blob/include/math.h',
+  'blob/include/setjmp.h',
   'blob/include/stdio.h',
   'blob/include/stdlib.h',
   'blob/include/string.h',
+  'blob/include/time.h',
   'blob/sdk/gamex86.h',
 )
 blob_targets = []
