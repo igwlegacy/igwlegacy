@@ -7,7 +7,7 @@
  * local g_gametype CVAR is 3 (coop), "Difficulty:" with sv_difficulty's
  * name.
  *
- * The second line now reads "Game Mode:" with the mode the server runs,
+ * The second line now reads "Mode:" with the mode the server runs,
  * taken from its serverinfo: g_gametype 0 is Deathmatch, 4 Survival and
  * 5 Teamkill; 3 is Resistance when g_legacygametype is "1" and Vanilla
  * otherwise, also when the server does not know g_legacygametype. The
@@ -20,7 +20,7 @@
  *
  * Four changes do it, none of them over relocated bytes:
  *  - "#levelload-max" at RVA 0x600a4, whose only reference is the label
- *    push at RVA 0xa777, becomes the untranslated literal "Game Mode:"; no
+ *    push at RVA 0xa777, becomes the untranslated literal "Mode:"; no
  *    language file has a key reading that.
  *  - The label drawer at RVA 0x5f90 formats "%s %s" from the label buffer
  *    at its [esp+0x1418] and the value. A label starting with '#' is looked
@@ -50,7 +50,7 @@ static code_rule_t patch_loading_game_mode_hooks[] = {
 
 static const code_rule_t patch_loading_game_mode_label[] = {
     { UI, true, "loading game mode: label", 0x600a4, 15,
-      "#levelload-max", "Game Mode:" },
+      "#levelload-max", "Mode:" },
     /* lea eax,[esp+0x41c] -> [esp+0x141c]: the destination of the drawer's
      * copy of a label not starting with '#', see above.
      */
