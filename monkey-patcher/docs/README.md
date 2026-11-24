@@ -116,8 +116,8 @@ function frame(t)
         if igw.difficulty() >= 3 then
             igw.spawn("scarab", route)
         end
-        igw.banner("Wave incoming on route " .. route)
-        igw.sound("sound/zippo.wav")
+        igw.incoming("large")
+        igw.chat("Wave incoming on route " .. route)
         next_wave = t + 60000
     end
 end
@@ -147,6 +147,7 @@ The `igw` table, which only works inside `frame` (but `igw.print`):
 | `igw.banner(text)` | A centre print for every player |
 | `igw.chat(text)` | A chat line for every player |
 | `igw.sound(path)` | A sound every player hears in full |
+| `igw.incoming([size])` | Retail's wave announcement: every player hears the attack sound of `size`, `"small"` (default), `"medium"` or `"large"`, and sees `INCOMING CONFEDERATE ATTACK!` in their language below the crosshair. It doesn't spawn anything. |
 | `igw.cvar(name[, value])` | Returns a cvar's value as a string, or sets it |
 | `igw.print(...)` | The same as `print`, to the server console |
 

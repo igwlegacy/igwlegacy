@@ -207,6 +207,18 @@ function igw.chat(text) end
 ---@param path string up to 63 bytes
 function igw.sound(path) end
 
+---@alias igw.AttackSize
+---| "small"  # sound/gameplay/waveattack_small.wav
+---| "medium" # sound/gameplay/waveattack_medium.wav
+---| "large"  # sound/gameplay/waveattack_large.wav
+
+-- Retail's announcement of a wave: every player hears the size's
+-- waveattack sound and sees "INCOMING CONFEDERATE ATTACK!" in their own
+-- language below the crosshair. It announces only; spawn the wave with
+-- igw.spawn().
+---@param size? igw.AttackSize default "small"
+function igw.incoming(size) end
+
 -- Returns a cvar's value, "" when it doesn't exist; with a value, sets it
 -- instead and returns nothing. Numbers are set as tostring() writes them,
 -- booleans as "1" and "0".

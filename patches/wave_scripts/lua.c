@@ -36,6 +36,7 @@
  *   igw.players() -> human players on the red team
  *   igw.difficulty() -> 0..5, the level letter's: e m h b g p
  *   igw.banner(text), igw.chat(text), igw.sound(path)
+ *   igw.incoming(size = "small"), retail's attack sound and banner
  *   igw.cvar(name) -> string, igw.cvar(name, value)
  *   igw.print(...), the same as print(...)
  *
@@ -297,6 +298,21 @@ static int api_sound(lua_State *L)
     return 0;
 }
 
+/* Retail's announcement of a wave, G_WaveSound(size): an event that has
+ * every client play the size's waveattack sound and centre-print its
+ * own language's "INCOMING CONFEDERATE ATTACK!" (#incomingattack).
+ */
+static int api_incoming(lua_State *L)
+{
+    static const char *const sizes[] = { "small", "medium", "large", NULL };
+    check_frame(L, "incoming");
+    int size = luaL_checkoption(L, 1, "small", sizes);
+    lua_runtime_game();
+    ((void (*)(int))GAME_ADDRESS(GAME_WAVE_SOUND))(size);
+    lua_runtime_script();
+    return 0;
+}
+
 /* A setting's value as cvar text: strings as they are, numbers as
  * tostring() writes them, booleans as 1 and 0. NULL for other types.
  */
@@ -355,6 +371,7 @@ static void open_igw(lua_State *L)
         { "spawn", api_spawn },   { "routes", api_routes },       { "alive", api_alive },
         { "players", api_players }, { "difficulty", api_difficulty }, { "banner", api_banner },
         { "chat", api_chat },     { "sound", api_sound },         { "cvar", api_cvar },
+        { "incoming", api_incoming },
         { NULL, NULL },
     };
     luaL_newlib(L, functions);
