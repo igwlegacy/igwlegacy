@@ -18,10 +18,16 @@
  * hook that names the mode in that line (RVA 0xa7bd) is no longer reached
  * on this screen.
  *
- * Three changes do it, none of them over relocated bytes:
+ * Four changes do it, none of them over relocated bytes:
  *  - "#levelload-max" at RVA 0x600a4, whose only reference is the label
- *    push at RVA 0xa777, becomes the untranslated literal "Game Mode:"; the
- *    label drawer at RVA 0x5f90 only looks up texts starting with '#'.
+ *    push at RVA 0xa777, becomes the untranslated literal "Game Mode:"; no
+ *    language file has a key reading that.
+ *  - The label drawer at RVA 0x5f90 formats "%s %s" from the label buffer
+ *    at its [esp+0x1418] and the value. A label starting with '#' is looked
+ *    up and copied there, but any other label is copied to [esp+0x418]
+ *    instead, which leaves the label empty and drew " Resistance". That
+ *    copy's destination becomes [esp+0x1418] as well. Every other caller
+ *    of the drawer passes a '#' key, so only this label takes the path.
  *  - The Info_ValueForKey(serverinfo, "sv_humanClients") call at RVA
  *    0xa75f, whose result is the line's value, calls mode_name() instead,
  *    which has the same cdecl arguments and returns the mode's name. It
@@ -45,6 +51,12 @@ static code_rule_t patch_loading_game_mode_hooks[] = {
 static const code_rule_t patch_loading_game_mode_label[] = {
     { UI, true, "loading game mode: label", 0x600a4, 15,
       "#levelload-max", "Game Mode:" },
+    /* lea eax,[esp+0x41c] -> [esp+0x141c]: the destination of the drawer's
+     * copy of a label not starting with '#', see above.
+     */
+    { UI, true, "loading game mode: literal label buffer", 0x6023, 7,
+      { 0x8d, 0x84, 0x24, 0x1c, 0x04, 0x00, 0x00 },
+      { 0x8d, 0x84, 0x24, 0x1c, 0x14, 0x00, 0x00 } },
 };
 
 /* A short forward branch emitted by emit_skip_if() lands here, failing the
