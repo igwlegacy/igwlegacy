@@ -1,5 +1,5 @@
--- Spiral on primordial, as a Lua wave script. It takes precedence over
--- spiral-p.toml and spiral-p.xml, and shows every setting and every igw
+-- Spiral on titan, as a Lua wave script. It takes precedence over
+-- spiral-t.toml and spiral-t.xml, and shows every setting and every igw
 -- function; see "Lua wave scripts" in monkey-patcher/docs/README.md.
 --
 -- The campaign: the XML's eleven waves, one a minute once the field is
@@ -84,7 +84,7 @@ superweapons = {
     { x = -128, y = 1024, z = 256 },
 }
 
--- The expansion's spots, from spiral-p.xml.
+-- The expansion's spots, from spiral-t.xml.
 deathhand = {
     { -1906, -1640, 50, 85 },
     { 1666, -1236, 50, 130 },
@@ -190,7 +190,7 @@ end
 ------------------------------------------------------------------------
 
 local started = false       -- the first frame has run
-local level = 0             -- igw.difficulty(), 0 easy to 5 primordial
+local level = 0             -- igw.difficulty(), 0 easy to 5 titan
 local next_wave = 1         -- the next wave's number
 local last_sent = -MINUTE   -- when the last wave went out
 local held = true           -- the last wave was announced as held off

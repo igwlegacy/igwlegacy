@@ -1,13 +1,13 @@
-# spiral-p.xml, setting by setting
+# spiral-t.xml, setting by setting
 
-What every setting in `spiral-p.xml` does, read from the game's code
+What every setting in `spiral-t.xml` does, read from the game's code
 (gamex86.dll, as decompiled in the reigw project; the addresses are
 gamex86 RVAs). Kept here and not as XML comments because the game reads a
 wave file into an 8 KB buffer and refuses the map ("Failed to load
 wavefile") once the file is 8192 bytes or more (`G_LoadWaveScript`,
 0x64730).
 
-Values the file does not set come from `skill-p.cfg` (exec'd first) or the
+Values the file does not set come from `skill-t.cfg` (exec'd first) or the
 built-in defaults. Everything under `SKILLSETTINGS` and `AI_SETTINGS` is
 written into cvars and never reset, so a later map whose wave file leaves
 a setting out keeps this map's value.
@@ -20,7 +20,7 @@ Sides: the players are Atelia (team 1), the NPCs the Confederation.
   give or take `sk_wavespawn_random` 2000), then one every 10 s, fixed in
   code (`G_RunWaves`, 0x6d7b0).
 - A wave is only sent while live conscripts + 4 per live vehicle are fewer
-  than `sk_npc_treshold` (20, from skill-p.cfg; this file does not set it).
+  than `sk_npc_treshold` (20, from skill-t.cfg; this file does not set it).
   So the next wave comes once the previous one is mostly dead.
 - Which wave: by the round's age. Before `SMALLWAVE_TIME` (70 s) a random
   `size="0"` wave, before `MEDIUMWAVE_TIME` (200 s) a random `size="1"`
@@ -45,7 +45,7 @@ Sides: the players are Atelia (team 1), the NPCs the Confederation.
 | `OFFICERS` | 1 | No effect: clamped to 1, and the roamer spawner sets it to 1 again; there is never more than one officer. |
 | `COMMANDOS` | 100 | Target for the roamer spawner (cap 100, default 100), times the player scale (70 solo). While fewer NPCs live than that, every tick sends 1 to 3 roamers. All live NPCs count, wave conscripts and vehicles too, so while the waves keep 70+ alive no roamers come. |
 
-### Player scaling (`sk_level_*` / `sk_plevel_*`, from skill-p.cfg)
+### Player scaling (`sk_level_*` / `sk_plevel_*`, from skill-t.cfg)
 
 Wave conscripts (not vehicles) and the `COMMANDOS` target are multiplied
 by 70 % for 1 human player, 80 % for 2, 90 % for 3 to 4, 100 % for 5 to 8
@@ -68,7 +68,7 @@ x 0.7 = 56.
 
 ## SKILLSETTINGS
 
-Each element sets the cvar of its name, overriding skill-p.cfg.
+Each element sets the cvar of its name, overriding skill-t.cfg.
 
 ### Morale
 

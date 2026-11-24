@@ -188,7 +188,7 @@ function igw.alive(class) end
 function igw.players() end
 
 -- The difficulty of the script's level letter: 0 easy (e), 1 medium (m),
--- 2 hard (h), 3 brutal (b), 4 god (g), 5 primordial (p).
+-- 2 hard (h), 3 brutal (b), 4 god (g), 5 titan (t).
 ---@return integer
 function igw.difficulty() end
 

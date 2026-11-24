@@ -601,7 +601,7 @@ static void fail(const char *reason)
 /* The level letter's difficulty: scripts/waves/<map>-<letter>.xml. */
 static int level_difficulty(const char *xml, size_t length)
 {
-    static const char letters[] = "emhbgp";
+    static const char letters[] = "emhbgt";
     if (length >= 6 && xml[length - 6] == '-') {
         const char *letter = strchr(letters, xml[length - 5] | 32);
         if (letter && *letter)

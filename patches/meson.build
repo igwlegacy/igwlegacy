@@ -96,7 +96,7 @@ patch_sources = [git_version] + files(
 	'heat_haze.c',
 	'rts_spectator.c',
 	'rts_grid.c',
-	'difficulty_primordial.c',
+	'difficulty_titan.c',
 	'wave_scripts.c',
 	'max_vehicles.c',
 	'unpurchasable.c',
