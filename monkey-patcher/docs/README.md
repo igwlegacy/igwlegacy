@@ -34,6 +34,7 @@ Each functionality has a separate file in `patches/` at the repository root:
 | [main_menu_ad.c](../../patches/main_menu_ad.c) | Main-menu promotional panel, ticker, and update request |
 | [main_menu_join.c](../../patches/main_menu_join.c) | Main-menu `MULTIPLAYER` button labelled `JOIN` |
 | [browser_lan.c](../../patches/browser_lan.c) | Server browser opening on `LAN` instead of `Internet` |
+| [browser_stop_hint.c](../../patches/browser_stop_hint.c) | Server browser refresh without the non-working `Press SPACE to stop` hint |
 | [autoplay.c](../../patches/autoplay.c) | Automatically enter the game once loading finishes, without clicking `PLAY!` |
 | [valuable_markers.c](../../patches/valuable_markers.c) | Persistent models at every valuable spawn position |
 | [pickup_markers.c](../../patches/pickup_markers.c) | Persistent models at every dynamite, rocket launcher and radio spawn position |
