@@ -17,17 +17,44 @@ blob_sources = {
 	),
 }
 blob_include_dirs = {
-	'game': [meson.project_source_root() / 'vendor/tomlc17/src'],
+	'game': [
+		meson.project_source_root() / 'vendor/tomlc17/src',
+		meson.project_source_root() / 'vendor/lua/src',
+		meson.project_source_root() / 'vendor/musl/src/internal',
+		meson.current_source_dir() / 'wave_scripts/musl',
+	],
 }
 blob_depend_files = {
 	'game': files(
 		'wave_scripts/scripts.h',
+		'wave_scripts/lua_runtime.h',
+		'wave_scripts/musl/endian.h',
+		'wave_scripts/musl/features.h',
+		'wave_scripts/musl/fp_arch.h',
 		'../vendor/tomlc17/src/tomlc17.h',
 	),
 }
-# Sources of blob_sources that do their floating point with SSE2, see
-# "C blobs" in monkey-patcher/docs/README.md.
-blob_sse2_sources = {}
+# Further sources, which do their floating point with SSE2, see "C blobs"
+# in monkey-patcher/docs/README.md: the Lua runtime, whose results must
+# not depend on the CPU or on the game's x87 precision (its own sources
+# lua_runtime.c includes), and musl's math functions for it.
+musl_math = []
+foreach name : [
+	'acos.c', 'asin.c', 'atan.c', 'atan2.c', 'ceil.c', '__cos.c', 'cos.c',
+	'exp.c', 'exp_data.c', 'fabs.c', 'floor.c', 'fmod.c', 'frexp.c',
+	'ldexp.c', 'log.c', 'log10.c', 'log2.c', 'log2_data.c', 'log_data.c',
+	'__math_divzero.c', '__math_invalid.c', '__math_oflow.c',
+	'__math_uflow.c', '__math_xflow.c', 'pow.c', 'pow_data.c',
+	'__rem_pio2.c', '__rem_pio2_large.c', 'scalbn.c', '__sin.c', 'sin.c',
+	'sqrt.c', 'sqrt_data.c', '__tan.c', 'tan.c',
+]
+	musl_math += files('../vendor/musl/src/math' / name)
+endforeach
+blob_sse2_sources = {
+	'game': files(
+		'wave_scripts/lua_runtime.c',
+	) + musl_math,
+}
 
 patch_sources = [git_version] + files(
 	'version.c',

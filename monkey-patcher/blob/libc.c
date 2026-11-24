@@ -280,6 +280,11 @@ int atoi(const char *text)
     return (int)strtol(text, NULL, 10);
 }
 
+int abs(int value)
+{
+    return value < 0 ? -value : value;
+}
+
 /* A bounded writer that keeps counting past the end, as vsnprintf must. */
 typedef struct {
     char *at;

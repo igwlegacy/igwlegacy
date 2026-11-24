@@ -93,6 +93,7 @@ double tan(double x);
  */
 typedef struct FILE FILE;
 #define EOF (-1)
+#define BUFSIZ 512
 extern FILE *const stdin;
 extern FILE *const stdout;
 extern FILE *const stderr;
@@ -110,6 +111,7 @@ int ferror(FILE *file);
 
 /* stdlib.h */
 _Noreturn void abort(void);
+int abs(int value);
 void *malloc(size_t size);
 void *realloc(void *pointer, size_t size);
 void free(void *pointer);
