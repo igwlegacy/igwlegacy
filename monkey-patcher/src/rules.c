@@ -134,7 +134,8 @@ bool rules_validate(void)
         return false;
     for (size_t i = 0; i < payload_feature_count; ++i) {
         const payload_feature_t *feature = payload_features[i];
-        if ((feature->module != GAME && feature->module != CGAME) ||
+        if ((feature->module != GAME && feature->module != CGAME &&
+             feature->module != UI) ||
             !feature->name || !feature->name[0] || !feature->build) {
             fprintf(stderr, "Invalid payload feature %zu\n", i);
             return false;

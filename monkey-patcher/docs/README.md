@@ -38,6 +38,7 @@ Each functionality has a separate file in `patches/` at the repository root:
 | [browser_stop_button.c](../../patches/browser_stop_button.c) | Server browser `STOP` button stopping a refresh at once instead of restarting it against the second master server while no server has answered |
 | [browser_leaderboard_banner.c](../../patches/browser_leaderboard_banner.c) | Server browser without the `Visit www.igwdeath.com for the leaderboard!` banner |
 | [game_mode_vanilla.c](../../patches/game_mode_vanilla.c) | Host-game menu's `COOP` game mode labelled `VANILLA` |
+| [game_mode_resistance.c](../../patches/game_mode_resistance.c) | `RESISTANCE` coop game mode with friendly fire off, no difficulty multiplier and the god difficulty, flagged by `g_legacygametype 1` |
 | [autoplay.c](../../patches/autoplay.c) | Automatically enter the game once loading finishes, without clicking `PLAY!` |
 | [valuable_markers.c](../../patches/valuable_markers.c) | Persistent models at every valuable spawn position |
 | [pickup_markers.c](../../patches/pickup_markers.c) | Persistent models at every dynamite, rocket launcher and radio spawn position |
@@ -285,6 +286,16 @@ Set `RTS_GRID_SIZE_X` and `RTS_GRID_SIZE_Y` in [rts_grid.c](../../patches/rts_gr
 The cursor ray's hit is snapped horizontally, then traced vertically to find the ground at that grid point. The original placement checks use that new trace's height, surface normal, buildable flags and entity hits. Placement smoothing is disabled for grid-snapped structures so both the preview and the submitted build position stay on the grid. Trip mines retain free placement at both ends and their original smoothing. Stronghold rebuilding retains its map-defined attachment positions. Server placement validation still applies. Keep both registrations at the end of `rts_grid.c` enabled together.
 
 Machine-gun and anti-tank turret rotation snaps to `RTS_TURRET_ANGLE_STEP`, which defaults to 45 degrees. This rounds the final world yaw so the preview and submitted build command share the same orientation regardless of camera direction. Other structures retain their existing rotation behavior. The angle step must be a positive whole-number divisor of 360; halfway positions choose the even step index.
+
+### RESISTANCE game mode
+
+The host-game menu's `Game mode:` dropdown lists `VANILLA`, `RESISTANCE` and `DEATHMATCH`. `RESISTANCE` starts the same coop game as `VANILLA` (`g_gametype 3`), but with friendly fire off, no difficulty multiplier and the `GOD` difficulty. Choosing it sets those three controls and greys them out, as `DEATHMATCH` does. Choosing another mode, or opening the menu again, gives back the values they had before. Those values are kept in the archived CVARs `ui_resistancesaved`, `ui_resistancedifficulty`, `ui_resistancefriendlyfire` and `ui_resistancediffmulti`, because the UI DLL is reloaded on every map load.
+
+The mode is flagged by the new CVAR `g_legacygametype`: `RESISTANCE` sets it to `1`, `VANILLA` and `DEATHMATCH` to `0`, its default. It is `CVAR_SERVERINFO | CVAR_LATCH`, so like `g_gametype` it takes effect with the next map, and a dedicated server enables the mode with `set g_legacygametype 1` in its config. While it is `1` in a coop game, the patched `gamex86.dll` forces `g_friendlyfire 0`, `sv_diffmulti 0` and `sv_difficulty 4` when the game starts and on every frame, so console, rcon and config changes do not stick. It also refuses `callvote difficulty`. Outside coop the game resets `g_legacygametype` to `0` and changes nothing.
+
+The patched `uix86.dll` names the mode on the loading screen and shows `Resist` in the server browser's difficulty column. The patched `cgamex86.dll` names it on the connection screen and the scoreboard. The browser only sees the servers' info responses, which have no `g_legacygametype`, so the patched `igwarlord.exe` and `igwarlord-server.exe` report difficulty `6` for a `RESISTANCE` server there. An unpatched browser leaves the difficulty column of such a server empty.
+
+The server needs the patched `gamex86.dll` for the rules and the patched executable for the browser entry; clients need the patched `uix86.dll` and `cgamex86.dll` for the names. The UI changes hook the three calls of the dropdown's index mapper, which now maps the three entries to `g_gametype` 3, 3 and 0, and use a payload feature in the UI DLL. The engine changes are a small cave in each executable's zero-filled `.text` slack, whose virtual size is extended to cover it.
 
 ### CVAR mapping
 
