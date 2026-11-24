@@ -37,6 +37,8 @@ enum {
 #define GAME_PICK_WAVE_ROUTE 0x2006da10u
 #define GAME_PICK_ROUTE 0x2006d320u
 #define GAME_NUM_SPLINES 0x2011c880u
+/* G_SpawnRoamers(), the round's roamers ahead of G_RunWaves' waves. */
+#define GAME_SPAWN_ROAMERS 0x2006d340u
 
 /* igw_xml.cpp's globals. */
 #define GAME_WAVES 0x2011c0b8u

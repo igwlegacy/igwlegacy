@@ -16,7 +16,7 @@
  * must stay below 128; the mov's imm32 follows the relocated address of
  * igw_maxVehicles, which is left untouched. The XML loader's default of 4
  * for scripts without a VEHICLES entry is kept, so only scripts that ask
- * for more vehicles change. toml_waves/waves.c applies the same cap.
+ * for more vehicles change. wave_scripts/toml.c applies the same cap.
  *
  * The NPC pool (MAX_IGW_NPCS, 256) also holds the conscripts (capped at
  * 200), the officer and the roamers, so vehicles beyond that just fail to

@@ -11,7 +11,8 @@ git_version = vcs_tag(
 # beyond the blob runtime's, and headers that a rebuild depends on.
 blob_sources = {
 	'game': files(
-		'toml_waves/waves.c',
+		'wave_scripts/scripts.c',
+		'wave_scripts/toml.c',
 		'../vendor/tomlc17/src/tomlc17.c',
 	),
 }
@@ -19,7 +20,10 @@ blob_include_dirs = {
 	'game': [meson.project_source_root() / 'vendor/tomlc17/src'],
 }
 blob_depend_files = {
-	'game': files('../vendor/tomlc17/src/tomlc17.h'),
+	'game': files(
+		'wave_scripts/scripts.h',
+		'../vendor/tomlc17/src/tomlc17.h',
+	),
 }
 # Sources of blob_sources that do their floating point with SSE2, see
 # "C blobs" in monkey-patcher/docs/README.md.
@@ -64,7 +68,7 @@ patch_sources = [git_version] + files(
 	'rts_spectator.c',
 	'rts_grid.c',
 	'difficulty_primordial.c',
-	'toml_waves.c',
+	'wave_scripts.c',
 	'max_vehicles.c',
 	'unpurchasable.c',
 	# 'rts_buildable.c',

@@ -1,13 +1,14 @@
-/* TOML wave scripts. The payload calls toml_waves_load() at the start of
- * G_LoadWaveScript and toml_waves_run() from G_RunWaves, right after the
- * roamers spawn. With scripts/waves/<map>-<level>.toml present, the TOML
- * replaces the XML. It sets every value the XML loader sets, with the same
+/* TOML wave scripts. scripts.c calls toml_waves_load() at the start of
+ * G_LoadWaveScript and toml_waves_run() from G_RunWaves, in place of the
+ * roamers' spawning. With scripts/waves/<map>-<level>.toml present, the
+ * TOML replaces the XML. It sets every value the XML loader sets, with the same
  * defaults, caps and first-script-only rules. Its [[WAVE]]s are sent one
  * after the other in file order, each its startup milliseconds after the
  * previous one, the first after the round's start. The last one repeats
  * every startup milliseconds. A wave's size only picks the attack sound.
  */
 #include "gamex86.h"
+#include "scripts.h"
 #include "tomlc17.h"
 
 #include <stdio.h>
@@ -45,16 +46,6 @@ static void release(void)
     parsed_valid = false;
     free(source);
     source = NULL;
-}
-
-static void print(const char *format, ...)
-{
-    char text[512];
-    va_list args;
-    va_start(args, format);
-    vsnprintf(text, sizeof(text), format, args);
-    va_end(args);
-    game_syscall(G_PRINT, text);
 }
 
 /* Drops the map like the XML loader's own errors; G_ERROR does not return,
@@ -174,21 +165,6 @@ static void to_string(const toml_datum_t *d, const char *key, char *text, size_t
     default:
         fail(d, "%s must be a string or a number", key);
     }
-}
-
-static void set_cvar(const char *name, const char *value)
-{
-    game_syscall(G_CVAR_SET, name, value);
-}
-
-/* G_IsExpansion, through the engine instead of the DLL's own helper,
- * which takes its argument in a register.
- */
-static bool is_expansion(void)
-{
-    if (game_syscall(G_CVAR_VARIABLE_INTEGER_VALUE, "com_dedicated"))
-        return game_syscall(G_CVAR_VARIABLE_INTEGER_VALUE, "sv_expansion") != 0;
-    return game_syscall(G_CVAR_VARIABLE_INTEGER_VALUE, "cl_expansionSE") != 0;
 }
 
 static const toml_datum_t *table(const toml_datum_t *d, const char *key)
@@ -325,7 +301,7 @@ static void parse_skill_settings(const toml_datum_t *t)
     char value[256];
     for (int i = 0; i < t->u.tab.size; ++i) {
         to_string(&t->u.tab.value[i], t->u.tab.key[i], value, sizeof(value));
-        set_cvar(t->u.tab.key[i], value);
+        waves_set_cvar(t->u.tab.key[i], value);
     }
 }
 
@@ -353,12 +329,12 @@ static void parse_ai_settings(const toml_datum_t *t)
                 break;
         if (s < sizeof(settings) / sizeof(settings[0])) {
             to_string(d, key, value, sizeof(value));
-            set_cvar(settings[s].cvar, value);
+            waves_set_cvar(settings[s].cvar, value);
         } else if (is(key, "WAVEDISTANCE")) {
             int distance = to_int(d, key);
             distance = distance < 15 ? 15 : distance > 250 ? 250 : distance;
             snprintf(value, sizeof(value), "%d", distance);
-            set_cvar("npc_wavedist", value);
+            waves_set_cvar("npc_wavedist", value);
         } else if (is(key, "DM_CIVS")) {
             GAME(int, GAME_DM_CIVS) = to_int(d, key);
         } else {
@@ -368,18 +344,12 @@ static void parse_ai_settings(const toml_datum_t *t)
 }
 
 /* The x, y and z of every spot kind, with yaw and intensity where the
- * kind has them. Like the XML, the spots drawn into the map get z + 2.
+ * kind has them. scripts.c raises those the XML raises.
  */
-typedef struct {
-    float origin[3];
-    float yaw;
-    float intensity;
-} spot_t;
-
-static spot_t parse_spot(const toml_datum_t *t, const char *section, bool lift,
-                         bool has_yaw, bool has_intensity)
+static waves_spot_t parse_spot(const toml_datum_t *t, const char *section, bool has_yaw,
+                               bool has_intensity)
 {
-    spot_t spot = { { 0, 0, 0 }, 0, 0 };
+    waves_spot_t spot = { { 0, 0, 0 }, 0, 0 };
     for (int i = 0; i < t->u.tab.size; ++i) {
         const char *key = t->u.tab.key[i];
         const toml_datum_t *d = &t->u.tab.value[i];
@@ -388,7 +358,7 @@ static spot_t parse_spot(const toml_datum_t *t, const char *section, bool lift,
         else if (is(key, "y"))
             spot.origin[1] = (float)to_double(d, key);
         else if (is(key, "z"))
-            spot.origin[2] = (float)to_double(d, key) + (lift ? 2 : 0);
+            spot.origin[2] = (float)to_double(d, key);
         else if (has_yaw && is(key, "yaw"))
             spot.yaw = (float)to_double(d, key);
         else if (has_intensity && is(key, "intensity"))
@@ -399,79 +369,41 @@ static spot_t parse_spot(const toml_datum_t *t, const char *section, bool lift,
     return spot;
 }
 
-/* The map's own spots come from the level's first script only. */
-static bool first_script(void)
-{
-    return !LEVEL(int, LEVEL_WAVES_LOADED);
-}
-
 static void add_spawn_spot(const toml_datum_t *t, const char *key)
 {
-    spot_t spot = parse_spot(t, key, true, true, false);
-    int *count = &LEVEL(int, LEVEL_NUM_SPAWN_SPOTS);
-    if (!first_script() || *count >= MAX_SPAWN_SPOTS)
-        return;
-    game_spot_t *s = &((game_spot_t *)GAME_ADDRESS(GAME_LEVEL + LEVEL_SPAWN_SPOTS))[(*count)++];
-    memcpy(s->origin, spot.origin, sizeof(s->origin));
-    s->angles[1] = spot.yaw;
-}
-
-/* Radio and rocket spots exist in the expansion only. */
-static void add_expansion_spot(const toml_datum_t *t, const char *key, uint32_t count_at,
-                               uint32_t spots_at, int max)
-{
-    spot_t spot = parse_spot(t, key, true, true, false);
-    int *count = &LEVEL(int, count_at);
-    if (!is_expansion() || !first_script() || *count >= max)
-        return;
-    game_spot_t *s = &((game_spot_t *)GAME_ADDRESS(GAME_LEVEL + spots_at))[(*count)++];
-    memcpy(s->origin, spot.origin, sizeof(s->origin));
-    s->angles[1] = spot.yaw;
+    waves_spot_t spot = parse_spot(t, key, true, false);
+    waves_add_spawn_spot(&spot);
 }
 
 static void add_radio_spot(const toml_datum_t *t, const char *key)
 {
-    add_expansion_spot(t, key, LEVEL_NUM_RADIO_SPOTS, LEVEL_RADIO_SPOTS, MAX_RADIO_SPOTS);
+    waves_spot_t spot = parse_spot(t, key, true, false);
+    waves_add_radio_spot(&spot);
 }
 
 static void add_rocket_spot(const toml_datum_t *t, const char *key)
 {
-    add_expansion_spot(t, key, LEVEL_NUM_ROCKET_SPOTS, LEVEL_ROCKET_SPOTS, MAX_ROCKET_SPOTS);
+    waves_spot_t spot = parse_spot(t, key, true, false);
+    waves_add_rocket_spot(&spot);
 }
 
 static void add_deathhand_spot(const toml_datum_t *t, const char *key)
 {
-    spot_t spot = parse_spot(t, key, true, true, false);
-    int *count = &LEVEL(int, LEVEL_NUM_DEATHHAND_SPOTS);
-    if (!is_expansion() || !first_script() || *count >= MAX_DEATHHAND_SPOTS)
-        return;
-    game_deathhand_spot_t *s =
-        &((game_deathhand_spot_t *)GAME_ADDRESS(GAME_LEVEL + LEVEL_DEATHHAND_SPOTS))[(*count)++];
-    memcpy(s->origin, spot.origin, sizeof(s->origin));
-    s->yaw = spot.yaw;
+    waves_spot_t spot = parse_spot(t, key, true, false);
+    waves_add_deathhand_spot(&spot);
 }
 
-/* ARTILLERY is read from every script, unlike the map's spots. */
 static void add_artillery_spot(const toml_datum_t *t, const char *key)
 {
-    spot_t spot = parse_spot(t, key, false, false, true);
-    int *count = &LEVEL(int, LEVEL_NUM_ARTILLERY_SPOTS);
-    if (*count >= MAX_ARTILLERY_SPOTS)
+    waves_spot_t spot = parse_spot(t, key, false, true);
+    if (!waves_add_artillery_spot(&spot))
         fail(t, "ARTILLERY has more than %d spots", MAX_ARTILLERY_SPOTS);
-    float (*spots)[3] = GAME_ADDRESS(GAME_LEVEL + LEVEL_ARTILLERY_SPOTS);
-    memcpy(spots[*count], spot.origin, sizeof(spot.origin));
-    ((float *)GAME_ADDRESS(GAME_LEVEL + LEVEL_ARTILLERY_INTENSITY))[*count] = spot.intensity;
-    ++*count;
 }
 
 static void add_superweapon_spot(const toml_datum_t *t, const char *key)
 {
-    spot_t spot = parse_spot(t, key, false, false, false);
-    int *count = &LEVEL(int, LEVEL_NUM_SUPERWEAPON_SPOTS);
-    if (!first_script() || *count >= MAX_SUPERWEAPON_SPOTS)
-        return;
-    float (*spots)[3] = GAME_ADDRESS(GAME_LEVEL + LEVEL_SUPERWEAPON_SPOTS);
-    memcpy(spots[(*count)++], spot.origin, sizeof(spot.origin));
+    waves_spot_t spot = parse_spot(t, key, false, false);
+    waves_add_superweapon_spot(&spot);
 }
 
 /* [ARTILLERY] and [SUPERWEAPON] hold their spots in spot = [...] or in
@@ -598,10 +530,7 @@ static void set_defaults(void)
     num_waves = 0;
 }
 
-/* G_LoadWaveScript(xml) for the TOML next to it. Returns -1 without one, so
- * that the payload continues into the XML loader, and 1 once loaded.
- */
-BLOB_EXPORT int toml_waves_load(const char *xml)
+int toml_waves_load(const char *xml)
 {
     active = false;
 
@@ -643,7 +572,7 @@ BLOB_EXPORT int toml_waves_load(const char *xml)
     /* Restart the sequence for a new level, but keep the round's place
      * when a difficulty change reloads during it.
      */
-    if (first_script())
+    if (waves_first_script())
         restart = true;
     set_defaults();
     parse_document(&parsed.toptab);
@@ -658,7 +587,7 @@ BLOB_EXPORT int toml_waves_load(const char *xml)
     GAME(int, GAME_FIRST_MEDIUM_WAVE) = -1;
     GAME(int, GAME_FIRST_LARGE_WAVE) = -1;
     LEVEL(int, LEVEL_WAVES_LOADED) = 1;
-    print("Loaded wave script %s: %d waves\n", name, num_waves);
+    waves_print("Loaded wave script %s: %d waves\n", name, num_waves);
     active = true;
     return 1;
 }
@@ -708,7 +637,7 @@ static void spawn_infantry(const game_wave_t *wave)
                 route = pick_route(wave);
             /* AddNPC does not check the route itself. */
             if (route < 0 || route >= GAME(int, GAME_NUM_SPLINES)) {
-                print("^3WARNING: %s: route %d does not exist on this map\n", loading,
+                waves_print("^3WARNING: %s: route %d does not exist on this map\n", loading,
                       route + 1);
                 return;
             }
@@ -719,14 +648,12 @@ static void spawn_infantry(const game_wave_t *wave)
     }
 }
 
-/* G_RunWaves after G_SpawnRoamers, for TOML scripts. Returns 0 for XML
- * scripts, which continue in G_RunWaves, and 1 when it has handled the
- * frame instead.
- */
-BLOB_EXPORT int toml_waves_run(void)
+/* The roamers spawn as with the XML, then the TOML's waves follow. */
+bool toml_waves_run(void)
 {
     if (!active)
-        return 0;
+        return false;
+    waves_spawn_roamers();
     int time = LEVEL(int, LEVEL_TIME);
     int start = LEVEL(int, LEVEL_ROUND_START_TIME);
     if (restart || start != round_start) {
@@ -736,11 +663,11 @@ BLOB_EXPORT int toml_waves_run(void)
         retry_time = 0;
     }
     if (!num_waves)
-        return 1;
+        return true;
     int index = sent < num_waves ? sent : num_waves - 1;
     int due = (sent ? last_sent : round_start) + startup[index];
     if (time < due || time < retry_time)
-        return 1;
+        return true;
 
     /* Like the XML scheduler, send only with room for more NPCs. A wave
      * without room, or whose conscripts and vehicles find no room or
@@ -749,7 +676,7 @@ BLOB_EXPORT int toml_waves_run(void)
     int npcs = GAME(int, GAME_NUM_CONSCRIPTS) + GAME(int, GAME_NUM_VEHICLES) * 4;
     if (npcs >= GAME(int, GAME_NPC_THRESHOLD)) {
         retry_time = time + RETRY_TIME;
-        return 1;
+        return true;
     }
     game_wave_t *wave = &waves[index];
     const int *n = wave->counts;
@@ -761,7 +688,7 @@ BLOB_EXPORT int toml_waves_run(void)
                     n[NPC_BOSS_WALKER] > 0;
     if ((reported || n[NPC_WALKER] > 0) && !send_script_wave(wave) && reported) {
         retry_time = time + RETRY_TIME;
-        return 1;
+        return true;
     }
     spawn_infantry(wave);
     ((void (*)(int))GAME_ADDRESS(GAME_WAVE_SOUND))(sizes[index]);
@@ -769,5 +696,5 @@ BLOB_EXPORT int toml_waves_run(void)
     last_sent = time;
     if (sent < num_waves)
         ++sent;
-    return 1;
+    return true;
 }
