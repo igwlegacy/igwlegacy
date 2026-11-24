@@ -117,7 +117,7 @@ function frame(t)
             igw.spawn("scarab", route)
         end
         igw.incoming("large")
-        igw.chat("Wave incoming on route " .. route)
+        print("wave on route " .. route)
         next_wave = t + 60000
     end
 end
@@ -145,15 +145,14 @@ The `igw` table, which only works inside `frame` (but `igw.print`):
 | `igw.players()` | The number of human players on the red team |
 | `igw.difficulty()` | 0 to 5 from the file's level letter: `e`, `m`, `h`, `b`, `g`, `p` |
 | `igw.banner(text)` | A centre print for every player |
-| `igw.chat(text)` | A chat line for every player |
 | `igw.sound(path)` | A sound every player hears in full |
 | `igw.incoming([size])` | Retail's wave announcement: every player hears the attack sound of `size`, `"small"` (default), `"medium"` or `"large"`, and sees `INCOMING CONFEDERATE ATTACK!` in their language below the crosshair. It doesn't spawn anything. |
 | `igw.cvar(name[, value])` | Returns a cvar's value as a string, or sets it |
-| `igw.print(...)` | The same as `print`, to the server console |
+| `igw.print(...)` | The same as `print`: a line on the server's console and in its `qconsole.log` (with `logfile 1`), never sent to players. Meant for debug and status output. |
 
 The classes are `conscript`, `grenadier`, `legionnaire`, `officer`, `scarab`, `ontos`, `walker`, `boss_walker`, `spy`, `engineer`, `bomber`, `civilian` and `herrad`.
 
-[spiral-p.lua](../../gamedir/scripts/waves/spiral-p.lua) is a complete example that uses every setting and function: Spiral's waves with player scaling, Templar ratios, caps and retries, roamers, an officer that respawns, spies and engineers, a boss walker that speeds up the infantry, and status lines in the chat. It also shows how a script continues after a reload during a round.
+[spiral-p.lua](../../gamedir/scripts/waves/spiral-p.lua) is a complete example that uses every setting and function: Spiral's waves with player scaling, Templar ratios, caps and retries, roamers, an officer that respawns, spies and engineers, a boss walker that speeds up the infantry, and status lines on the server console. It also shows how a script continues after a reload during a round.
 
 [wave_scripts/meta.lua](../../patches/wave_scripts/meta.lua) has the [LuaLS](https://luals.github.io) definitions of the settings, `frame` and the `igw` table, and the repository's [.luarc.json](../../.luarc.json) loads it and leaves out the libraries the scripts don't have. An editor with LuaLS opened on the repository then completes and checks wave scripts. A setting is only checked against its type when the script repeats it, as in `---@type igw.Limits` above `limits = { bots = 3 }`.
 

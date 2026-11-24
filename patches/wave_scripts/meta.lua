@@ -193,14 +193,11 @@ function igw.players() end
 function igw.difficulty() end
 
 -- A centre print for every player. Double quotes become single ones,
--- control characters spaces, and only the first 900 bytes are kept.
--- Colour codes (^1) work.
+-- control characters other than line breaks spaces, and only the first
+-- 900 bytes are kept. Colour codes (^1) work. There is no chat line on
+-- purpose: it would read as said by a player or the server.
 ---@param text string
 function igw.banner(text) end
-
--- A chat line for every player, the text cleaned up as in igw.banner().
----@param text string
-function igw.chat(text) end
 
 -- A sound every player hears in full, such as
 -- "sound/gameplay/waveattack_large.wav".
@@ -227,7 +224,8 @@ function igw.incoming(size) end
 ---@overload fun(name: string, value: string|number|boolean)
 function igw.cvar(name) end
 
--- The same as print(): a line on the server console. Also works at the
--- top level.
+-- The same as print(): a line on the server's console and in its
+-- qconsole.log (with logfile 1), never sent to players; for debug and
+-- status output. Also works at the top level.
 ---@param ... any
 function igw.print(...) end

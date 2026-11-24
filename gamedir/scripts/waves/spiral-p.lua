@@ -125,7 +125,7 @@ local MIN_WAVE_GAP = 20 * SECOND -- a late wave still keeps this distance
 local BOSS_AT = 12 * MINUTE      -- the boss walker's time
 local SPECIALS_FROM = 3 * MINUTE -- spies and engineers from here on
 local SPECIALS_GAP = 45 * SECOND
-local STATUS_GAP = 5 * MINUTE    -- a status line in the chat this often
+local STATUS_GAP = 5 * MINUTE    -- a console status line this often
 local PENDING_FOR = 2 * MINUTE   -- refused spawns are retried this long
 
 local MAX_CONSCRIPTS = 100
@@ -292,10 +292,6 @@ local function send_wave(t, k)
 
     igw.banner(string.format("WAVE %d", k))
     igw.sound(SOUND[wave.size])
-    if armour > 0 then
-        igw.chat(string.format("^3Enemy armour spotted: %d vehicle%s", armour,
-                               armour == 1 and "" or "s"))
-    end
     print(string.format("wave %d at %s: %d conscripts (templar %.2f), %d vehicles",
                         k, clock(t), count, templar, armour))
 end
@@ -311,15 +307,12 @@ local function start(t)
     if t < 5 * SECOND then
         igw.banner("SPIRAL: HOLD THE CITY")
         igw.sound(SOUND.start)
-        igw.chat(string.format("^3%d routes, a wave a minute, a boss walker at %s. Good luck.",
-                               igw.routes(), clock(BOSS_AT)))
     else
         next_wave = math.max((t - FIRST_WAVE) // WAVE_GAP + 2, 1)
         boss_sent = t >= BOSS_AT
         status_at = (t // STATUS_GAP + 1) * STATUS_GAP
         specials_at = math.max(t, SPECIALS_FROM)
-        igw.chat(string.format("^3Wave script reloaded at %s, continuing with wave %d",
-                               clock(t), next_wave))
+        print(string.format("reloaded at %s, continuing with wave %d", clock(t), next_wave))
     end
 end
 
@@ -346,9 +339,9 @@ local function held_off(t)
     end
     held = true
     local due = FIRST_WAVE + (next_wave - 1) * WAVE_GAP
+    igw.banner(string.format("^2WAVE %d HELD OFF\n^7The next one comes in %d s",
+                             next_wave - 1, math.max(due - t, 0) // SECOND))
     igw.sound(SOUND.held)
-    igw.chat(string.format("^2Wave %d held off. The next one comes in %d s.",
-                           next_wave - 1, math.max(due - t, 0) // SECOND))
 end
 
 -- Keeps one officer around, the next one sk_officer_respawntime after the
@@ -358,8 +351,8 @@ local function officer(t)
         if igw.alive("officer") == 0 then
             officer_up = false
             officer_at = t + cvar_number("sk_officer_respawntime", 30 * SECOND)
+            igw.banner("^2THE ENEMY OFFICER IS DOWN")
             igw.sound(SOUND.officer)
-            igw.chat("^2The enemy officer is down!")
         end
     elseif t >= officer_at then
         if igw.spawn("officer", math.random(igw.routes())) == 1 then
@@ -398,19 +391,19 @@ local function boss(t)
     igw.cvar("g_npcspeed", math.floor(speed * 1.15))
     igw.banner("A BOSS WALKER APPROACHES")
     igw.sound(SOUND.boss)
-    igw.chat(string.format("^1Boss walker inbound! Enemy infantry speed %s -> %s",
-                           speed, igw.cvar("g_npcspeed")))
+    print(string.format("boss walker at %s, infantry speed %s -> %s",
+                        clock(t), speed, igw.cvar("g_npcspeed")))
 end
 
--- A status line every few minutes.
+-- A status line on the server console every few minutes.
 local function status(t)
     if t < status_at then
         return
     end
     status_at = status_at + STATUS_GAP
-    igw.chat(string.format("^7%s: wave %d, %d enemies alive (%d conscripts, %d vehicles), %d defenders",
-                           clock(t), next_wave - 1, igw.alive(), igw.alive("conscript"),
-                           vehicles_alive(), igw.players()))
+    print(string.format("%s: wave %d, %d enemies alive (%d conscripts, %d vehicles), %d defenders",
+                        clock(t), next_wave - 1, igw.alive(), igw.alive("conscript"),
+                        vehicles_alive(), igw.players()))
 end
 
 -- Called every server frame with the milliseconds since the round's start.

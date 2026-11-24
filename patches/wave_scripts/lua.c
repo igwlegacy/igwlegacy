@@ -35,7 +35,7 @@
  *   igw.alive([class]) -> living NPCs, of the class or all
  *   igw.players() -> human players on the red team
  *   igw.difficulty() -> 0..5, the level letter's: e m h b g p
- *   igw.banner(text), igw.chat(text), igw.sound(path)
+ *   igw.banner(text), igw.sound(path)
  *   igw.incoming(size = "small"), retail's attack sound and banner
  *   igw.cvar(name) -> string, igw.cvar(name, value)
  *   igw.print(...), the same as print(...)
@@ -232,42 +232,30 @@ static int api_difficulty(lua_State *L)
     return 1;
 }
 
-/* Sends "<command> \"<text><suffix>\"" to every client. Quotes would end
- * the argument and become apostrophes; with newline false, so do line
- * breaks become spaces.
+/* A centre print for every client: "cp \"<text>\n\"". Quotes would end
+ * the argument and become apostrophes, other control characters than
+ * line breaks spaces. There is deliberately no chat counterpart: a chat
+ * line reads as said by a player or the server, which the waves aren't.
  */
-static void send_message(lua_State *L, const char *command, bool newline, const char *suffix)
+static int api_banner(lua_State *L)
 {
+    check_frame(L, "banner");
     size_t length;
     const char *text = luaL_checklstring(L, 1, &length);
     char line[MAX_MESSAGE + 32];
-    int n = snprintf(line, sizeof(line), "%s \"", command);
+    int n = snprintf(line, sizeof(line), "cp \"");
     for (size_t i = 0; i < length && i < MAX_MESSAGE; ++i) {
         char c = text[i];
         if (c == '"')
             c = '\'';
-        else if ((unsigned char)c < ' ' && !(newline && c == '\n'))
+        else if ((unsigned char)c < ' ' && c != '\n')
             c = ' ';
         line[n++] = c;
     }
-    snprintf(line + n, sizeof(line) - (size_t)n, "%s\"", suffix);
+    snprintf(line + n, sizeof(line) - (size_t)n, "\n\"");
     lua_runtime_game();
     game_syscall(G_SEND_SERVER_COMMAND, -1, line);
     lua_runtime_script();
-}
-
-/* The centre print, which wants its own line end. */
-static int api_banner(lua_State *L)
-{
-    check_frame(L, "banner");
-    send_message(L, "cp", true, "\n");
-    return 0;
-}
-
-static int api_chat(lua_State *L)
-{
-    check_frame(L, "chat");
-    send_message(L, "chat", false, "");
     return 0;
 }
 
@@ -370,8 +358,7 @@ static void open_igw(lua_State *L)
     static const luaL_Reg functions[] = {
         { "spawn", api_spawn },   { "routes", api_routes },       { "alive", api_alive },
         { "players", api_players }, { "difficulty", api_difficulty }, { "banner", api_banner },
-        { "chat", api_chat },     { "sound", api_sound },         { "cvar", api_cvar },
-        { "incoming", api_incoming },
+        { "sound", api_sound },   { "incoming", api_incoming },   { "cvar", api_cvar },
         { NULL, NULL },
     };
     luaL_newlib(L, functions);
