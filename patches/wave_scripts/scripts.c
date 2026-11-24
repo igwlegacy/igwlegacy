@@ -107,11 +107,13 @@ void waves_spawn_roamers(void)
 }
 
 /* G_LoadWaveScript(xml), before the XML loader: -1 continues into it, as
- * no other script exists; otherwise the result to return.
+ * no other script exists; otherwise the result to return. A .lua comes
+ * before a .toml.
  */
 BLOB_EXPORT int wave_scripts_load(const char *xml)
 {
-    return toml_waves_load(xml);
+    int result = lua_waves_load(xml);
+    return result != -1 ? result : toml_waves_load(xml);
 }
 
 /* G_RunWaves, in place of its call of G_SpawnRoamers: 0 to spawn the
@@ -120,5 +122,13 @@ BLOB_EXPORT int wave_scripts_load(const char *xml)
  */
 BLOB_EXPORT int wave_scripts_run(void)
 {
-    return toml_waves_run();
+    return lua_waves_run() || toml_waves_run();
+}
+
+/* G_CheckRound, in place of its call of G_SendLoseWaves at a lost
+ * round's end: 0 to send them, 1 to leave them out.
+ */
+BLOB_EXPORT int wave_scripts_lose_waves(void)
+{
+    return lua_waves_active();
 }

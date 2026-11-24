@@ -35,9 +35,10 @@ blob_depend_files = {
 	),
 }
 # Further sources, which do their floating point with SSE2, see "C blobs"
-# in monkey-patcher/docs/README.md: the Lua runtime, whose results must
-# not depend on the CPU or on the game's x87 precision (its own sources
-# lua_runtime.c includes), and musl's math functions for it.
+# in monkey-patcher/docs/README.md: the Lua wave scripts, whose results
+# must not depend on the CPU or on the game's x87 precision, the Lua
+# runtime (whose own sources lua_runtime.c includes) and musl's math
+# functions for it.
 musl_math = []
 foreach name : [
 	'acos.c', 'asin.c', 'atan.c', 'atan2.c', 'ceil.c', '__cos.c', 'cos.c',
@@ -52,6 +53,7 @@ foreach name : [
 endforeach
 blob_sse2_sources = {
 	'game': files(
+		'wave_scripts/lua.c',
 		'wave_scripts/lua_runtime.c',
 	) + musl_math,
 }

@@ -34,6 +34,8 @@ A sixth difficulty, `PRIMORDIAL` (`sv_difficulty 5`), follows god in the host-ga
 
 For every difficulty, a `scripts/waves/<map>-<level>.toml` takes precedence over the `.xml` of the same name. It holds the same settings and spots, but its `[[WAVE]]`s are sent one after the other in file order, each one `startup` milliseconds after the previous one, and the last wave repeats. See [monkey-patcher/docs/README.md](monkey-patcher/docs/README.md#toml-wave-scripts) for the format.
 
+A `scripts/waves/<map>-<level>.lua` takes precedence over both. It replaces all retail wave and roamer spawning: its `frame(t)` function runs every server frame of a round and spawns NPCs, prints banners and plays sounds itself, deterministically. See [monkey-patcher/docs/README.md](monkey-patcher/docs/README.md#lua-wave-scripts) for the API.
+
 A wave script's `MAXCOUNTS` `VEHICLES` may ask for up to 16 live vehicles instead of retail's 4, in both the `.xml` and the `.toml`; without it the default stays 4.
 
 A weapon, upgrade or structure whose cost in the skill config is 10000 or more cannot be bought. In the in-game shop, the spawn weapon and upgrade pages, the RTS build menu and the RTS structure upgrade button its button turns a dark grey, distinct from the regular looks including the grey of merely unaffordable structures, ignores clicks and shows no price, and an unpurchasable upgrade tier greys out all later tiers of its chain too. The server refuses such weapons and upgrades as well, even when sale credit would cover them.

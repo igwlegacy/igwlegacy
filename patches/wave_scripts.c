@@ -1,12 +1,15 @@
 #include "patches.h"
 #include "game_blob.h"
 
-/* Wave scripts beyond the XML: scripts/waves/<map>-<level>.toml takes
- * precedence over the .xml of the same name. The loaders and schedulers
- * are C in gamex86's blob, see wave_scripts/scripts.c for how the formats
- * take turns and wave_scripts/toml.c for the TOML's semantics.
+/* Wave scripts beyond the XML: scripts/waves/<map>-<level>.lua takes
+ * precedence over the .toml of the same name, which takes precedence over
+ * the .xml. The loaders and schedulers are C in gamex86's blob, see
+ * wave_scripts/scripts.c for how the formats take turns,
+ * wave_scripts/lua.c for the Lua scripts and wave_scripts/toml.c for the
+ * TOML's semantics. A Lua script spawns everything itself, so with one
+ * the round's lose waves stay away too.
  *
- * Both hooks are relative jumps or calls into the payload section, whose
+ * All hooks are relative jumps or calls into the payload section, whose
  * bytes no base relocation covers, so the DLL still rebases correctly.
  */
 
@@ -21,11 +24,14 @@ static code_rule_t patch_wave_scripts_hooks[] = {
      */
     { GAME, true, "wave scripts: run the frame's waves", 0x6d7c3, 5,
       { 0xe8, B4(0x6d340u - 0x6d7c8u) }, { 0xe8, 0, 0, 0, 0 } },
+    /* G_CheckRound: call G_SendLoseWaves, once a lost round is over. */
+    { GAME, true, "wave scripts: no lose waves with a Lua script", 0x41d0d, 5,
+      { 0xe8, B4(0x5d500u - 0x41d12u) }, { 0xe8, 0, 0, 0, 0 } },
 };
 
 static bool build_game(payload_t *payload, uint32_t rva, uint32_t next, uint32_t *entry)
 {
-    /* The two short stubs below; payload_build() appends the blob. */
+    /* The three short stubs below; payload_build() appends the blob. */
     if (!payload_reserve(payload, 128, "wave scripts"))
         return false;
     *entry = emit_entry(payload, next);
@@ -56,7 +62,16 @@ static bool build_game(payload_t *payload, uint32_t rva, uint32_t next, uint32_t
          0x59,                              /* pop ecx */
          0xc3);                             /* ret */
 
-    const uint32_t targets[] = { load, run };
+    /* G_SendLoseWaves unless wave_scripts_lose_waves() leaves them out,
+     * a tail jump that returns into G_CheckRound.
+     */
+    uint32_t lose = (uint32_t)payload->size;
+    emit_blob_call(payload, &game_blob, GAME_BLOB_WAVE_SCRIPTS_LOSE_WAVES);
+    EMIT(0x85, 0xc0);                       /* test eax,eax */
+    emit_jump_if(payload, rva, 0x84, 0x5d500u); /* je G_SendLoseWaves */
+    EMIT(0xc3);                             /* ret */
+
+    const uint32_t targets[] = { load, run, lose };
     resolve_hooks(patch_wave_scripts_hooks, ARRAY_SIZE(targets), targets, rva);
     return true;
 }

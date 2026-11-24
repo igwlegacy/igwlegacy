@@ -21,9 +21,11 @@ enum {
     G_ERROR = 1,
     G_CVAR_SET = 6,
     G_CVAR_VARIABLE_INTEGER_VALUE = 7,
+    G_CVAR_VARIABLE_STRING_BUFFER = 8,
     G_FS_FOPEN_FILE = 12,
     G_FS_READ = 13,
     G_FS_FCLOSE_FILE = 15,
+    G_SEND_SERVER_COMMAND = 19,
 };
 
 /* The wave code. G_SendScriptWave takes its wave in esi. */
@@ -39,6 +41,41 @@ enum {
 #define GAME_NUM_SPLINES 0x2011c880u
 /* G_SpawnRoamers(), the round's roamers ahead of G_RunWaves' waves. */
 #define GAME_SPAWN_ROAMERS 0x2006d340u
+/* G_AddTank(route, wave, class) for classes 5 and 6 and G_AddWalker(route,
+ * wave, class) for 7 and 8, both cdecl and NULL without a free record.
+ */
+#define GAME_ADD_TANK 0x20053510u
+#define GAME_ADD_WALKER 0x20052f70u
+
+/* G_TeamHumanCount(-1, TEAM_RED) with both folded in: the connected
+ * human players on the red team.
+ */
+#define GAME_TEAM_HUMAN_COUNT 0x2003d910u
+/* G_SoundIndex takes its name in edi; G_GlobalSound(index) is cdecl. */
+#define GAME_SOUND_INDEX 0x2002ffc0u
+#define GAME_GLOBAL_SOUND 0x200309f0u
+
+/* igwNPC_t igw_npcs[MAX_GAME_NPCS], the NPCs' records, and the fields of
+ * a record and of its gentity_t that tell whether it lives. A death
+ * clears the record's inuse and entity, but an officer's.
+ */
+#define GAME_NPCS 0x21311820u
+#define MAX_GAME_NPCS 256
+#define NPC_SIZE 0x60cu
+#define NPC_INUSE 0x0u
+#define NPC_ENTITY 0x8u
+#define NPC_WAVE 0x370u
+#define NPC_CLASS 0x3d4u
+#define ENTITY_INUSE 0x290u
+#define ENTITY_HEALTH 0x36cu
+#define ENTITY_NPC 0x3dcu
+
+/* igw_waveNPCs[MAX_NPC_WAVES + 1][2]: each wave's first and last NPC, a
+ * wave free while its first is NULL. Conscripts and vehicles march in
+ * waves 1..MAX_NPC_WAVES - 1, the numbers G_AddNPCWave hands out.
+ */
+#define GAME_WAVE_NPCS 0x21374160u
+#define MAX_NPC_WAVES 30
 
 /* igw_xml.cpp's globals. */
 #define GAME_WAVES 0x2011c0b8u

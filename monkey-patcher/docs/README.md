@@ -36,7 +36,7 @@ Each functionality has a separate file in `patches/` at the repository root:
 | [valuable_markers.c](../../patches/valuable_markers.c) | Persistent models at every valuable spawn position |
 | [pickup_markers.c](../../patches/pickup_markers.c) | Persistent models at every dynamite, rocket launcher and radio spawn position |
 | [rts_buildable.c](../../patches/rts_buildable.c) | Translucent green overlay on buildable terrain in RTS mode |
-| [wave_scripts.c](../../patches/wave_scripts.c) | `scripts/waves/<map>-<level>.toml` wave scripts with sequential waves |
+| [wave_scripts.c](../../patches/wave_scripts.c) | `scripts/waves/<map>-<level>.lua` Lua wave scripts and `.toml` wave scripts with sequential waves |
 | [max_vehicles.c](../../patches/max_vehicles.c) | Wave scripts' `MAXCOUNTS` `VEHICLES` capped at 16 instead of 4 |
 
 Edit the rule definitions in the corresponding file and rebuild. Each file registers its own rules with `REGISTER_CVAR_RULE`, `REGISTER_CODE_RULE`, their plural forms for arrays, or `REGISTER_PAYLOAD_FEATURE`. Comment out a registration to omit those rules. For a new functionality, add its `.c` file to `patches/meson.build` and register its rules in that file; no declarations or patch lists need updating in shared C files. `src/rules.c` collects and validates the registered rules, sorting by registration name for a deterministic payload layout while preserving the order within each array. One functionality can supply several rules.
@@ -94,6 +94,69 @@ HERRAD = 1
 `startup` is mandatory and counts from the round's start for the first wave and from the previous wave's sending for every later one. After the last wave, that wave repeats every `startup` milliseconds. `size` defaults to `0` and only selects the announcement sound. Unlike the XML, a wave also spawns its `GRENADIER`, `HLEGIONNAIRE` (legionnaire) and `HERRAD` counts, which retail parses but never sends. They start together at the start of one of the wave's routes (any route without `routes`) and then roam like the roamers `G_SpawnRoamers` sends. They aren't scaled by the player count, and they stop at the first NPC the game can't add. A wave may consist of them alone. A wave is sent only while the NPC count is below `sk_npc_treshold`, as in the XML scheduler. A wave that cannot be sent is retried every second and never skipped. A new round starts over from the first wave. A reload during a round, for example after a difficulty change, keeps the current position in the new script. `MINWAVEDIST_*` are still accepted but unused. `SMALLWAVE_TIME` and `MEDIUMWAVE_TIME` don't time the waves but still delay the first spies and engineers as before. Up to 128 waves are allowed, and the first 30 are also copied into the retail wave list.
 
 The loader is C around the vendored [tomlc17](../../vendor/tomlc17), in [wave_scripts/toml.c](../../patches/wave_scripts/toml.c), and part of `gamex86.dll`'s C blob (see [C blobs](#c-blobs)). Its scripts are limited to 1 MiB, and the blob's 4 MiB arena holds the parsed document. A `jmp` replaces `G_LoadWaveScript`'s first six bytes and replays them when no `.toml` exists. In `G_RunWaves`, the call to `G_SpawnRoamers` now goes through a stub that, while a TOML script is active, spawns the roamers from the blob and lets the TOML scheduler handle the frame, returning from `G_RunWaves` itself. Otherwise it continues into `G_SpawnRoamers` and the XML scheduler as before.
+
+### Lua wave scripts
+
+A `scripts/waves/<map>-<level>.lua` takes precedence over both the `.toml` and the `.xml` of the same name. It only needs the patched `gamex86.dll` on the server. A Lua script replaces all retail wave and roamer spawning: no XML or TOML scheduler, no roamers or attack groups, no lose waves at a lost round's end, and none of their sounds, chat lines, player scaling or caps. Nothing spawns but what the script spawns.
+
+The script runs in PUC Lua 5.4 from the vendored [vendor/lua](../../vendor/lua). Its top level only declares settings, locals and functions. The global function `frame(t)` is the only entry point. It is called every server frame of a round with `t`, the milliseconds since the round's start, once the map's NPC routes exist (about 100 ms into a new round). There is no waiting or sleeping: a script keeps its own state in locals and compares `t`.
+
+```lua
+cvars = { sk_Amorale_start = 250, g_npcspeed = 230 }
+limits = { bots = 6 }
+spawnpoints = { { 120, -340, 64, 90 }, { x = 200, y = -300, z = 64, yaw = 180 } }
+artillery = { { 0, 0, 512, 1.5 } }
+
+local next_wave = 10000
+
+function frame(t)
+    if t >= next_wave and igw.alive("conscript") < 40 then
+        local route = math.random(igw.routes())
+        igw.spawn("conscript", route, 10 + 2 * igw.players(), { templar = 0.2 })
+        if igw.difficulty() >= 3 then
+            igw.spawn("scarab", route)
+        end
+        igw.banner("Wave incoming on route " .. route)
+        igw.sound("sound/zippo.wav")
+        next_wave = t + 60000
+    end
+end
+```
+
+The settings are globals that the loader reads once, after the top level ran:
+
+| Setting | Content |
+| --- | --- |
+| `cvars` | Cvar names and their values, strings, numbers or booleans (`1`/`0`), set after the skill config exec as the XML's `SKILLSETTINGS` |
+| `limits` | `bots`, the map's bot limit, 0 to 8 (default 8) |
+| `spawnpoints`, `deathhand`, `radiospots`, `rocketspots` | Lists of spots `{ x, y, z, yaw }` |
+| `artillery` | Up to 5 spots `{ x, y, z, intensity }` |
+| `superweapons` | Spots `{ x, y, z }` |
+
+A spot may also name its fields, as in `{ x = 1, y = 2, z = 3, yaw = 90 }`, and its `yaw` or `intensity` defaults to 0. The spots follow the XML's rules: the map's own spots come from the level's first script only, the spawn-type spots are raised by 2 units, and the expansion's `deathhand`, `radiospots` and `rocketspots` are only used with the expansion. Anything unknown inside the settings stops the map with the file name, as do syntax errors, errors at the top level, a missing `frame` and any `igw` call other than `igw.print` outside of `frame`.
+
+The `igw` table, which only works inside `frame` (but `igw.print`):
+
+| Function | Does |
+| --- | --- |
+| `igw.spawn(class, route, n, opts)` | Spawns `n` (default 1) NPCs of `class` at the start of route `route` (1-based) and returns how many spawned. Conscripts and vehicles march along the route as one new wave, other classes roam from there. It stops at the first NPC the game refuses, for example with no free NPC record, no free wave number (29 waves at once) or a second officer. `opts.templar` is the conscripts' Templar machine gun ratio, 0 to 1. |
+| `igw.routes()` | The number of routes on the map |
+| `igw.alive([class])` | The number of living NPCs, of `class` or of all classes |
+| `igw.players()` | The number of human players on the red team |
+| `igw.difficulty()` | 0 to 5 from the file's level letter: `e`, `m`, `h`, `b`, `g`, `p` |
+| `igw.banner(text)` | A centre print for every player |
+| `igw.chat(text)` | A chat line for every player |
+| `igw.sound(path)` | A sound every player hears in full |
+| `igw.cvar(name[, value])` | Returns a cvar's value as a string, or sets it |
+| `igw.print(...)` | The same as `print`, to the server console |
+
+The classes are `conscript`, `grenadier`, `legionnaire`, `officer`, `scarab`, `ontos`, `walker`, `boss_walker`, `spy`, `engineer`, `bomber`, `civilian` and `herrad`.
+
+Every round runs in a fresh Lua state: the file is run again from its top level, so nothing carries over from the last round. A reload during a round, for example after a difficulty change, also starts a fresh state, and `t` keeps counting from the round's start. A runtime error, including running out of the instruction budget, prints the error with a traceback to the console and stops the script until the next round, while the map keeps running.
+
+Scripts run deterministically: the same script with the same inputs (the time, players, cvars and the game's NPCs) does the same on every machine and with every build of the DLL. Only the `base`, `table`, `string`, `math` and `utf8` libraries are there, without `dofile` and `loadfile`, and `load` only takes text. The floating point is SSE2 with musl's math functions under a fixed rounding mode. `math.random` starts from a fixed seed and `math.randomseed` needs an argument. Strings are hashed with a fixed seed, and tables hash objects by their offset in the script's own 8 MiB arena, which every new state starts afresh, so `pairs` visits keys in the same order. `tostring` and `%p` show those offsets too. Each call of `frame` (and the top level) may run up to 5 million Lua instructions, and `pcall` cannot catch running out.
+
+The interpreter is in [wave_scripts/lua_runtime.c](../../patches/wave_scripts/lua_runtime.c) and the loader and `igw` table in [wave_scripts/lua.c](../../patches/wave_scripts/lua.c), both built with SSE2 in `gamex86.dll`'s C blob, with the musl math sources from [vendor/musl](../../vendor/musl). The `G_LoadWaveScript` and `G_RunWaves` hooks are the TOML scripts'. While a Lua script is active, the stub in `G_RunWaves` skips `G_SpawnRoamers` and the XML scheduler, and a third hook replaces `G_CheckRound`'s call of `G_SendLoseWaves` with a stub that skips them as well.
 
 ### Cursor size
 

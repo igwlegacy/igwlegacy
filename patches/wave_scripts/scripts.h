@@ -1,6 +1,6 @@
 /* What the wave script formats share: the game's console, cvars and the
  * level's spot lists, filled the way the XML loader fills them. Each
- * format is its own file: toml.c.
+ * format is its own file: lua.c and toml.c.
  */
 #pragma once
 
@@ -51,6 +51,19 @@ bool waves_add_artillery_spot(const waves_spot_t *spot);
 
 /* G_SpawnRoamers, which the TOML scripts keep. */
 void waves_spawn_roamers(void);
+
+/* lua.c's G_LoadWaveScript(xml) for the .lua next to the .xml: -1
+ * without one, otherwise 1 once loaded. G_ERROR for an invalid one.
+ */
+int lua_waves_load(const char *xml);
+
+/* G_RunWaves' frame for a loaded Lua script, in place of all of the
+ * retail spawning; false without one.
+ */
+bool lua_waves_run(void);
+
+/* Whether the level's script is Lua, which leaves no retail spawning. */
+bool lua_waves_active(void);
 
 /* toml.c's G_LoadWaveScript(xml) for the .toml next to the .xml: -1
  * without one, otherwise 1 once loaded. G_ERROR for an invalid one.
