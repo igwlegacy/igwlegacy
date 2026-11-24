@@ -81,6 +81,7 @@ patch_sources = [git_version] + files(
 	'main_menu_github.c',
 	'main_menu_join.c',
 	'main_menu_top_edge.c',
+	'browser_lan.c',
 	'loading_background.c',
 	'loading_menu.c',
 	# 'autoplay.c',
