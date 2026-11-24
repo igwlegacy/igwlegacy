@@ -1,0 +1,24 @@
+{
+    "$schema": "https://raw.githubusercontent.com/LuaLS/vscode-lua/master/setting/schema.json",
+    "runtime.version": "Lua 5.4",
+    "runtime.builtin": {
+        "coroutine": "disable",
+        "debug": "disable",
+        "io": "disable",
+        "os": "disable",
+        "package": "disable",
+        "ffi": "disable",
+        "jit": "disable",
+        "bit": "disable",
+        "bit32": "disable",
+        "builtin": "enable",
+        "basic": "enable",
+        "math": "enable",
+        "string": "enable",
+        "table": "enable",
+        "utf8": "enable"
+    },
+    "workspace.library": ["patches/wave_scripts/meta.lua"],
+    "workspace.ignoreDir": [".pixi", "build", "dist", "vendor", "model-converter", "input-binaries"],
+    "workspace.checkThirdParty": false
+}
