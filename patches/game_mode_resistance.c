@@ -28,6 +28,9 @@
  * this only takes effect where CG_Init finds the level already set.
  * The engines' skill cfg checksum still compares skill-g.cfg.
  *
+ * While RESISTANCE is selected, the host-game menu shows the mode's badge,
+ * textures/ui/mmbdgres, where the three fixed controls it hides would be.
+ *
  * The server browser, the loading screens and the scoreboard name the
  * mode instead of the difficulty; the scoreboard also leaves out the diff
  * multiplier and friendly fire, which the mode fixes. The browser cannot learn it from the
@@ -42,8 +45,8 @@
 /* The difficulty the engines' info responses report for RESISTANCE. */
 #define RESISTANCE_LEVEL 6
 
-/* The UI's code, strings and data take about 900 bytes, the game's 700. */
-#define RESERVE 1536u
+/* The UI's code, strings and data take about 1400 bytes, the game's 700. */
+#define RESERVE 2048u
 
 /* -- uix86.dll --------------------------------------------------------- */
 
@@ -56,6 +59,42 @@
 #define UI_CVAR_VALUE 0x3a0c0u  /* float in st(0) */
 #define UI_CVAR_SET_VALUE 0x3a100u
 #define UI_FTOL 0x404d0u        /* st(0) -> eax */
+#define UI_MENU 0x8ec28u        /* the host-game menu's menuframework */
+#define UI_MENU_ADD_ITEM 0x2c130u /* Menu_AddItem(menu, item), cdecl */
+/* The display's aspect: 1 for 16:9, 2 for 16:10, 3 for 5:4, else 0.
+ * Clobbers eax only.
+ */
+#define UI_ASPECT 0x3f770u
+#define UI_VID_WIDTH 0x109e80u
+#define UI_VID_HEIGHT 0x109e84u
+
+/* A bitmap menu item (type 6), as far as the badge sets it up: the shader
+ * name, the position and size, which Bitmap_Init converts to pixels when
+ * the item is added, and the flags. The draw registers the shader lazily
+ * into a later member, which zeroing the item resets.
+ */
+#define ITEM_SIZE 0xe4u
+#define ITEM_BITMAP 6u
+#define ITEM_NAME 0x04u
+#define ITEM_X 0x0cu
+#define ITEM_Y 0x10u
+#define ITEM_FLAGS 0x2cu
+#define ITEM_WIDTH 0xc8u
+#define ITEM_HEIGHT 0xccu
+#define ITEM_HIDDEN 0x1000u
+/* Converted to pixels, inactive: the map preview's flags. */
+#define ITEM_PICTURE 0x204000u
+
+/* The badge's place in the 640x480 units of the menu's labels, which
+ * widescreen displays show as a centered 4:3 area: from the labels'
+ * left edge (116) to the dropdowns' right one (354), centered between
+ * the server name's entry field and the Map label, at the texture's
+ * aspect of 4:1.
+ */
+#define BADGE_X 116.0f
+#define BADGE_Y 166.0f
+#define BADGE_WIDTH 238.0f
+#define BADGE_HEIGHT 59.5f
 
 /* The menu's control values, which its initializer reads from the CVARs
  * whose names follow, and which each control's event writes back.
@@ -432,6 +471,19 @@ static bool build_ui(payload_t *payload, uint32_t rva, uint32_t next, uint32_t *
           UI_NAME_DIFF_MULTI },
     };
 
+    /* The badge's menu item and the floats that place it. */
+    uint32_t badge_name = rva + emit_string(payload, "textures/ui/mmbdgres");
+    while (payload->size & 3)
+        EMIT(0);
+    uint32_t item = rva + payload_append(payload, (const unsigned char[ITEM_SIZE]){ 0 },
+                                         ITEM_SIZE);
+    uint32_t four_thirds = rva + payload_append(payload, &(float){ 4.0f / 3.0f }, 4);
+    uint32_t half_width = rva + payload_append(payload, &(float){ 320.0f }, 4);
+    uint32_t badge_x = rva + payload_append(payload, &(float){ BADGE_X }, 4);
+    uint32_t badge_y = rva + payload_append(payload, &(float){ BADGE_Y }, 4);
+    uint32_t badge_width = rva + payload_append(payload, &(float){ BADGE_WIDTH }, 4);
+    uint32_t badge_height = rva + payload_append(payload, &(float){ BADGE_HEIGHT }, 4);
+
     /* restore(): if values are saved, put them back into the controls and
      * their CVARs and forget them. Keeps ebx.
      */
@@ -490,17 +542,76 @@ static bool build_ui(payload_t *payload, uint32_t rva, uint32_t next, uint32_t *
     EMIT(0x5b);                             /* pop ebx */
     emit_jump(payload, rva, UI_MAPPER);
 
-    /* The grey-out update tested for deathmatch (0); any index but
-     * VANILLA's now greys the controls: cmp dword [esp+4],1; sbb eax,eax.
+    /* The grey-out update, part of the menu's draw callback ahead of
+     * Menu_Draw, runs every frame: show the badge only for RESISTANCE's
+     * index (1). It tested for deathmatch (0); any index but VANILLA's
+     * now greys the controls: cmp dword [esp+4],1; sbb eax,eax.
      */
-    uint32_t grey = EMIT(0x83, 0x7c, 0x24, 0x04, 0x01, 0x1b, 0xc0, 0xc3);
+    uint32_t grey = (uint32_t)payload->size;
+    uint32_t at = emit_anchor(payload, rva, EAX);
+    EMIT(0x81, 0x88, B4(item + ITEM_FLAGS - at), B4(ITEM_HIDDEN)); /* or [eax+d] */
+    EMIT(0x83, 0x7c, 0x24, 0x04, 0x01);     /* cmp dword [esp+4],1 */
+    uint32_t other = emit_skip_if(payload, 0x75);
+    EMIT(0x81, 0xa0, B4(item + ITEM_FLAGS - at), B4(~ITEM_HIDDEN)); /* and [eax+d] */
+    land(payload, other);
+    EMIT(0x83, 0x7c, 0x24, 0x04, 0x01, 0x1b, 0xc0, 0xc3);
 
     /* The menu always opens on VANILLA, so give back saved values before
-     * the initializer reads the CVARs into the controls.
+     * the initializer reads the CVARs into the controls. After it, add
+     * the badge as the menu's last item, hidden until the grey-out update
+     * shows it.
      */
     uint32_t open = (uint32_t)payload->size;
     emit_call(payload, rva, rva + restore);
-    emit_jump(payload, rva, UI_MENU_INIT);
+    emit_call(payload, rva, UI_MENU_INIT);
+    EMIT(0x53, 0x57);                       /* push ebx; push edi */
+    base = emit_anchor(payload, rva, EBX);
+    /* Bitmap_Init overwrote the position and size in pixels, and the
+     * draw cached the shader: start over from a zeroed item.
+     */
+    ebx_op(payload, 0x8d, EDI, base, item);  /* lea edi,[ebx+d] */
+    EMIT(0x31, 0xc0,                        /* xor eax,eax */
+         0xb9, B4(ITEM_SIZE / 4u),          /* mov ecx,dwords */
+         0xf3, 0xab);                       /* rep stosd */
+    ebx_op(payload, 0xc7, 0, base, item);   /* mov dword [ebx+d],imm */
+    EMIT(B4(ITEM_BITMAP));
+    ebx_op(payload, 0x8d, EAX, base, badge_name);
+    ebx_op(payload, 0x89, EAX, base, item + ITEM_NAME);
+    ebx_op(payload, 0xc7, 0, base, item + ITEM_FLAGS);
+    EMIT(B4(ITEM_PICTURE | ITEM_HIDDEN));
+
+    /* Bitmap_Init stretches 640x480 units over the screen, the labels'
+     * centered 4:3 area being narrower on widescreen displays: there
+     * scale horizontally by k = 4/3 * height / width around the center,
+     * elsewhere k is 1, as for the menu's own layout.
+     */
+    emit_call(payload, rva, UI_ASPECT);
+    EMIT(0xd9, 0xe8,                        /* fld1 */
+         0x48, 0x83, 0xf8, 0x01);           /* dec eax; cmp eax,1 */
+    uint32_t narrow = emit_skip_if(payload, 0x77); /* ja: neither 16:9 nor 16:10 */
+    EMIT(0xdd, 0xd8);                       /* fstp st(0) */
+    ebx_op(payload, 0xdb, 0, base, UI_VID_HEIGHT); /* fild dword [ebx+d] */
+    ebx_op(payload, 0xd8, 1, base, four_thirds);   /* fmul dword [ebx+d] */
+    ebx_op(payload, 0xda, 6, base, UI_VID_WIDTH);  /* fidiv dword [ebx+d] */
+    land(payload, narrow);
+    ebx_op(payload, 0xd9, 0, base, badge_width);   /* fld dword [ebx+d] */
+    EMIT(0xd8, 0xc9);                       /* fmul st(0),st(1) */
+    ebx_op(payload, 0xd9, 3, base, item + ITEM_WIDTH); /* fstp dword [ebx+d] */
+    ebx_op(payload, 0xd9, 0, base, badge_x);
+    ebx_op(payload, 0xd8, 4, base, half_width);    /* fsub dword [ebx+d] */
+    EMIT(0xde, 0xc9);                       /* fmulp st(1),st(0) */
+    ebx_op(payload, 0xd8, 0, base, half_width);    /* fadd dword [ebx+d] */
+    ebx_op(payload, 0xd9, 3, base, item + ITEM_X);
+    ebx_op(payload, 0xd9, 0, base, badge_y);
+    ebx_op(payload, 0xd9, 3, base, item + ITEM_Y);
+    ebx_op(payload, 0xd9, 0, base, badge_height);
+    ebx_op(payload, 0xd9, 3, base, item + ITEM_HEIGHT);
+
+    push_address(payload, base, item);
+    push_address(payload, base, UI_MENU);
+    emit_call(payload, rva, UI_MENU_ADD_ITEM);
+    EMIT(0x83, 0xc4, 0x08,                  /* add esp,8 */
+         0x5f, 0x5b, 0xc3);                 /* pop edi; pop ebx; ret */
 
     /* Loading screen: for RESISTANCE translate its name into the buffer
      * like a level's and skip the level names; otherwise resume the chain,
