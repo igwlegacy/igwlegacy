@@ -37,6 +37,7 @@ Each functionality has a separate file in `patches/` at the repository root:
 | [browser_stop_hint.c](../../patches/browser_stop_hint.c) | Server browser refresh without the non-working `Press SPACE to stop` hint |
 | [browser_stop_button.c](../../patches/browser_stop_button.c) | Server browser `STOP` button stopping a refresh at once instead of restarting it against the second master server while no server has answered |
 | [browser_leaderboard_banner.c](../../patches/browser_leaderboard_banner.c) | Server browser without the `Visit www.igwdeath.com for the leaderboard!` banner |
+| [browser_news_hint.c](../../patches/browser_news_hint.c) | Server browser without the `Visit www.igwarlord.com for the latest news!` line |
 | [game_mode_vanilla.c](../../patches/game_mode_vanilla.c) | Host-game menu's `COOP` game mode labelled `VANILLA` |
 | [game_mode_resistance.c](../../patches/game_mode_resistance.c) | `RESISTANCE` coop game mode with friendly fire off, no difficulty multiplier and the god difficulty, flagged by `g_legacygametype 1` |
 | [loading_game_mode.c](../../patches/loading_game_mode.c) | Loading screen naming the game mode instead of the maximum players, with the difficulty only for `Vanilla` |
