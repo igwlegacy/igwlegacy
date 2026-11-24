@@ -17,6 +17,17 @@
  * mode is chosen or the menu reopens. The game enforces them every frame
  * and refuses difficulty votes, also on dedicated servers.
  *
+ * Instead of god's skill-g.cfg and scripts/waves/<map>-g.xml, the server
+ * uses the mode's own files: skill-res.cfg and scripts/waves/<map>-res.xml,
+ * which a <map>-res.toml or <map>-res.lua next to it replaces like for
+ * every level (wave_scripts.c). As with TITAN, a map without any of the
+ * three fails to load. The client's CG_Init picks skill-res.cfg as well
+ * when its level is RESISTANCE_LEVEL, which CG_ParseServerinfo stores for
+ * the mode. That level is part of cgs, though, which a newly loaded
+ * cgamex86.dll starts with zeroed, so like retail's levels and TITAN's
+ * this only takes effect where CG_Init finds the level already set.
+ * The engines' skill cfg checksum still compares skill-g.cfg.
+ *
  * The server browser, the loading screens and the scoreboard name the
  * mode instead of the difficulty; the scoreboard also leaves out the diff
  * multiplier and friendly fire, which the mode fixes. The browser cannot learn it from the
@@ -31,7 +42,7 @@
 /* The difficulty the engines' info responses report for RESISTANCE. */
 #define RESISTANCE_LEVEL 6
 
-/* The UI's code, strings and data take about 900 bytes, the game's 600. */
+/* The UI's code, strings and data take about 900 bytes, the game's 700. */
 #define RESERVE 1536u
 
 /* -- uix86.dll --------------------------------------------------------- */
@@ -135,6 +146,7 @@ static const address_rule_t patch_resistance_ui_addresses[] = {
 #define GAME_UPDATE_CVARS 0x24b10u
 #define GAME_GAMETYPE 0x15b07ccu    /* g_gametype.integer */
 #define GAME_ENTITIES 0x14b15a0u    /* g_entities */
+#define GAME_FTOL 0x94c30u          /* __ftol2_sse, st(0) -> eax */
 #define G_CVAR_REGISTER 4
 #define G_CVAR_UPDATE 5
 #define G_CVAR_SET 6
@@ -149,6 +161,17 @@ static code_rule_t patch_resistance_game_hooks[] = {
     /* Cmd_CallVote_f's jne past its "difficulty" case. */
     { GAME, true, "resistance: refuse difficulty votes", 0x1f350, 6,
       { 0x0f, 0x85, B4(0x1f412u - 0x1f356u) }, { 0xe9, 0, 0, 0, 0, 0x90 } },
+    /* G_InitGame: call __ftol2_sse of sv_difficulty, the level in coop,
+     * ahead of mov esi,eax and TITAN's hook in front of the skill-*.cfg
+     * jump table.
+     */
+    { GAME, true, "resistance: exec skill-res.cfg", 0x24bef, 5,
+      { 0xe8, B4(GAME_FTOL - 0x24bf4u) }, { 0xe8 } },
+    /* G_InitWaves: cmp esi,4; jne easy, god's test in the chain of levels
+     * that picks the wave script's format, esi being G_InitGame's level.
+     */
+    { GAME, true, "resistance: load scripts/waves/<map>-res.xml", 0x5f34c, 5,
+      { 0x83, 0xfe, 0x04, 0x75, 0x0c }, { 0xe9 } },
 };
 
 /* -- cgamex86.dll ------------------------------------------------------ */
@@ -160,6 +183,11 @@ static code_rule_t patch_resistance_game_hooks[] = {
  */
 #define CGAME_LANG_TEXT 0x33660u
 #define CGAME_SET_COLOR 0x33140u    /* vec4_t in eax, NULL for the default */
+#define CGAME_ATOI 0x82e32u
+/* The level CG_Init execs the skill-*.cfg of, which CG_ParseServerinfo
+ * sets from sv_difficulty. Nothing else reads it.
+ */
+#define CGAME_LEVEL 0xd749ecu
 
 /* The scoreboard header (cgamex86 RVA 0x7626c onwards) draws its label and
  * value pairs left to right, advancing the x at [S+0x10], S being esp
@@ -200,6 +228,16 @@ static code_rule_t patch_resistance_cgame_hooks[] = {
      */
     { CGAME, true, "resistance: scoreboard friendly fire", 0x76620, 5,
       { 0xe8, B4(CGAME_SET_COLOR - 0x76625u) }, { 0xe9 } },
+    /* CG_ParseServerinfo: call atoi of sv_difficulty, ahead of storing
+     * and clamping it as the level, with ebp the serverinfo.
+     */
+    { CGAME, true, "resistance: client level", 0x302a5, 5,
+      { 0xe8, B4(CGAME_ATOI - 0x302aau) }, { 0xe8 } },
+    /* CG_Init: cmp eax,2; jne next, with eax the level, in the chain of
+     * level tests ahead of TITAN's hook and the skill-*.cfg exec.
+     */
+    { CGAME, true, "resistance: client exec skill-res.cfg", 0x27cef, 5,
+      { 0x83, 0xf8, 0x02, 0x75, 0x07 }, { 0xe9 } },
 };
 
 /* -- igwarlord.exe and igwarlord-server.exe ---------------------------- */
@@ -536,6 +574,8 @@ static bool build_game(payload_t *payload, uint32_t rva, uint32_t next, uint32_t
     uint32_t difficulty = rva + emit_string(payload, "sv_difficulty");
     uint32_t message = emit_string(payload,
                                    "print \"The difficulty is fixed in RESISTANCE.\n\"");
+    uint32_t skill_cfg = emit_string(payload, "exec skill-res.cfg\n");
+    uint32_t waves = emit_string(payload, "scripts/waves/%s-res.xml");
     /* g_legacygametype's vmCvar_t; integer follows handle,
      * modificationCount and value.
      */
@@ -618,7 +658,42 @@ static bool build_game(payload_t *payload, uint32_t rva, uint32_t next, uint32_t
     emit_load_address(payload, rva, EAX, message);
     emit_jump(payload, rva, 0x1f323u);
 
-    const uint32_t targets[] = { init, frame, vote };
+    /* G_InitGame, in place of the call of __ftol2_sse: in RESISTANCE
+     * set the level as mov esi,eax would and exec skill-res.cfg instead
+     * of the level's cfg; otherwise return to mov esi,eax. The init hook
+     * above has registered g_legacygametype and cleared it outside coop
+     * by then. esi is free until mov esi,eax.
+     */
+    uint32_t skill = (uint32_t)payload->size;
+    emit_call(payload, rva, GAME_FTOL);
+    base = emit_anchor(payload, rva, ESI);
+    EMIT(0x83, 0xbe, B4(integer - base), 0x01);    /* cmp dword [esi+d],1 */
+    uint32_t level_cfg = emit_skip_if(payload, 0x75);
+    EMIT(0x8b, 0xf0,                               /* mov esi,eax */
+         0x83, 0xc4, 0x04);                        /* add esp,4: no return */
+    emit_load_address(payload, rva, EAX, skill_cfg);
+    emit_jump(payload, rva, 0x24c23u);             /* trap_SendConsoleCommand */
+    land(payload, level_cfg);
+    EMIT(0xc3);
+
+    /* G_InitWaves: in RESISTANCE format the map's name into
+     * scripts/waves/<map>-res.xml the way each level's case does;
+     * otherwise replay god's test. ecx is free here, like in god's case.
+     */
+    uint32_t wave = (uint32_t)payload->size;
+    base = emit_anchor(payload, rva, ECX);
+    EMIT(0x83, 0xb9, B4(integer - base), 0x01);    /* cmp dword [ecx+d],1 */
+    uint32_t resistance_waves = emit_skip_if(payload, 0x74);
+    EMIT(0x83, 0xfe, 0x04);                        /* cmp esi,4 */
+    emit_jump_if(payload, rva, 0x85, 0x5f35du);    /* jne: easy, or TITAN */
+    emit_jump(payload, rva, 0x5f351u);             /* god */
+    land(payload, resistance_waves);
+    EMIT(0x8d, 0x4c, 0x24, 0x08, 0x51);            /* lea ecx,[esp+8]; push ecx */
+    emit_load_address(payload, rva, ECX, waves);
+    EMIT(0x51);                                    /* push ecx */
+    emit_jump(payload, rva, 0x5f367u);             /* Com_sprintf */
+
+    const uint32_t targets[] = { init, frame, vote, skill, wave };
     _Static_assert(ARRAY_SIZE(targets) == ARRAY_SIZE(patch_resistance_game_hooks),
                    "every GAME hook needs a helper");
     resolve_hooks(patch_resistance_game_hooks, ARRAY_SIZE(targets), targets, rva);
@@ -636,6 +711,7 @@ static bool build_cgame(payload_t *payload, uint32_t rva, uint32_t next, uint32_
     uint32_t name = emit_string(payload, "Resistance");
     uint32_t legacy = emit_string(payload, "g_legacygametype");
     uint32_t mode = emit_string(payload, "Mode:");
+    uint32_t skill_cfg = emit_string(payload, "exec skill-res.cfg\n");
     /* The connection screen reads its name from names[level]; this slot
      * receives the name's runtime address, and the level becomes the
      * slot's index from the table. Both RVAs are dword-aligned.
@@ -729,7 +805,40 @@ static bool build_cgame(payload_t *payload, uint32_t rva, uint32_t next, uint32_
     emit_call(payload, rva, CGAME_SET_COLOR); /* replayed */
     emit_jump(payload, rva, 0x76625u);
 
-    const uint32_t targets[] = { scoreboard, connect, label, diff_multi, friendly_fire };
+    /* CG_ParseServerinfo, in place of the call of atoi: in RESISTANCE
+     * store RESISTANCE_LEVEL as the level, past the clamp that would turn
+     * it into god, and return from the function, dropping this call's
+     * return address and atoi's argument. ebx is popped there.
+     */
+    uint32_t client_level = (uint32_t)payload->size;
+    EMIT(0xff, 0x74, 0x24, 0x04);           /* push [esp+4] */
+    emit_call(payload, rva, CGAME_ATOI);
+    EMIT(0x83, 0xc4, 0x04);
+    emit_call(payload, rva, rva + is_resistance);
+    uint32_t difficulty = emit_skip_if(payload, 0x75);
+    uint32_t base = emit_anchor(payload, rva, EBX);
+    EMIT(0xc7, 0x83, B4(CGAME_LEVEL - base), B4((uint32_t)RESISTANCE_LEVEL)); /* mov [ebx+d] */
+    EMIT(0x83, 0xc4, 0x08);                 /* add esp,8 */
+    emit_jump(payload, rva, 0x302d0u);      /* pop edi, esi, ebp, ebx; ret */
+    land(payload, difficulty);
+    EMIT(0xc3);
+
+    /* CG_Init: exec skill-res.cfg for RESISTANCE_LEVEL; otherwise replay
+     * the test for hard.
+     */
+    uint32_t skill = (uint32_t)payload->size;
+    EMIT(0x83, 0xf8, RESISTANCE_LEVEL);
+    uint32_t other = emit_skip_if(payload, 0x75);
+    emit_load_address(payload, rva, EAX, skill_cfg);
+    emit_jump(payload, rva, 0x27d16u);      /* trap_SendConsoleCommand */
+    land(payload, other);
+    EMIT(0x83, 0xf8, 0x02);                 /* cmp eax,2 */
+    emit_jump_if(payload, rva, 0x85, 0x27cfbu); /* jne: brute, or TITAN */
+    emit_jump(payload, rva, 0x27cf4u);      /* mov eax,"exec skill-h.cfg\n" */
+
+    const uint32_t targets[] = {
+        scoreboard, connect, label, diff_multi, friendly_fire, client_level, skill,
+    };
     _Static_assert(ARRAY_SIZE(targets) == ARRAY_SIZE(patch_resistance_cgame_hooks),
                    "every CGAME hook needs a helper");
     resolve_hooks(patch_resistance_cgame_hooks, ARRAY_SIZE(targets), targets, rva);

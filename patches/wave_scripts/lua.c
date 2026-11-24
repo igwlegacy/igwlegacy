@@ -34,7 +34,8 @@
  *   igw.routes() -> number of routes, which are 1-based
  *   igw.alive([class]) -> living NPCs, of the class or all
  *   igw.players() -> human players on the red team
- *   igw.difficulty() -> 0..5, the level letter's: e m h b g p
+ *   igw.difficulty() -> 0..5, the level letter's: e m h b g t, or 4
+ *     for RESISTANCE's <map>-res, whose fixed level is god
  *   igw.banner(text), igw.sound(path)
  *   igw.incoming(size = "small"), retail's attack sound and banner
  *   igw.cvar(name) -> string, igw.cvar(name, value)
@@ -598,10 +599,14 @@ static void fail(const char *reason)
     __builtin_unreachable();
 }
 
-/* The level letter's difficulty: scripts/waves/<map>-<letter>.xml. */
+/* The level letter's difficulty: scripts/waves/<map>-<letter>.xml, or
+ * god for RESISTANCE's scripts/waves/<map>-res.xml.
+ */
 static int level_difficulty(const char *xml, size_t length)
 {
     static const char letters[] = "emhbgt";
+    if (length >= 8 && !strncmp(xml + length - 8, "-res.xml", 8))
+        return 4;
     if (length >= 6 && xml[length - 6] == '-') {
         const char *letter = strchr(letters, xml[length - 5] | 32);
         if (letter && *letter)
