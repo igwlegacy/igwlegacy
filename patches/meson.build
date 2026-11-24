@@ -89,6 +89,7 @@ patch_sources = [git_version] + files(
 	'game_mode_vanilla.c',
 	'loading_background.c',
 	'loading_menu.c',
+	'loading_game_mode.c',
 	# 'autoplay.c',
 	'valuable_markers.c',
 	'stronghold_markers.c',
