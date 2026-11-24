@@ -18,7 +18,8 @@
  * and refuses difficulty votes, also on dedicated servers.
  *
  * The server browser, the loading screens and the scoreboard name the
- * mode instead of the difficulty. The browser cannot learn it from the
+ * mode instead of the difficulty; the scoreboard also leaves out the diff
+ * multiplier and friendly fire, which the mode fixes. The browser cannot learn it from the
  * gametype, which its "Regular" filter requires to be 3, so the engines'
  * info responses report difficulty 6 for it instead.
  *
@@ -154,6 +155,21 @@ static code_rule_t patch_resistance_game_hooks[] = {
 
 #define CGAME_INFO_VALUE 0x3d9b0u   /* Info_ValueForKey, key in ebx, info in ecx */
 #define CGAME_CONNECT_NAMES 0xcae80u
+/* Lang_Text(key, buf) with the size in edx and the direction and text
+ * type outputs in ecx and eax; a key not starting with '#' is copied.
+ */
+#define CGAME_LANG_TEXT 0x33660u
+#define CGAME_SET_COLOR 0x33140u    /* vec4_t in eax, NULL for the default */
+
+/* The scoreboard header (cgamex86 RVA 0x7626c onwards) draws its label and
+ * value pairs left to right, advancing the x at [S+0x10], S being esp
+ * between the pairs, ebp holding the serverinfo: "Difficulty:", "Diff
+ * Multiplier:", "Players:" and "Friendly Fire:". Besides drawing, the diff
+ * multiplier's pair leaves two floats the players' pair adds to its x:
+ * [S+0x24], the int gap at [S+0x28], and [S+0x34], four times that. The
+ * players' label starts with call set_color at RVA 0x76507 while the
+ * multiplier's last Lang_Text arguments are still pushed, at S-0x14.
+ */
 
 static code_rule_t patch_resistance_cgame_hooks[] = {
     /* Scoreboard: add esp,4; push edx; lea eax,[esp+0x34], edx being the
@@ -168,6 +184,22 @@ static code_rule_t patch_resistance_cgame_hooks[] = {
      */
     { CGAME, true, "resistance: connection screen name", 0x9ad5, 5,
       { 0x8b, 0xd8, 0x83, 0xc4, 0x14 }, { 0xe9 } },
+    /* Scoreboard: the Lang_Text call that looks up the first label,
+     * "#scorebrd-diff", pushed as its first stack argument.
+     */
+    { CGAME, true, "resistance: scoreboard mode label", 0x7628f, 5,
+      { 0xe8, B4(CGAME_LANG_TEXT - 0x76294u) }, { 0xe8 } },
+    /* Scoreboard: lea eax,[esp+0x44]; call set_color, the start of the
+     * "Diff Multiplier:" label and value, also where survival skips to.
+     */
+    { CGAME, true, "resistance: scoreboard diff multiplier", 0x763aa, 9,
+      { 0x8d, 0x44, 0x24, 0x44, 0xe8, B4(CGAME_SET_COLOR - 0x763b3u) },
+      { 0xe9, 0, 0, 0, 0, 0x90, 0x90, 0x90, 0x90 } },
+    /* Scoreboard: call set_color, the start of the "Friendly Fire:" label
+     * and value, the header's last.
+     */
+    { CGAME, true, "resistance: scoreboard friendly fire", 0x76620, 5,
+      { 0xe8, B4(CGAME_SET_COLOR - 0x76625u) }, { 0xe9 } },
 };
 
 /* -- igwarlord.exe and igwarlord-server.exe ---------------------------- */
@@ -603,6 +635,7 @@ static bool build_cgame(payload_t *payload, uint32_t rva, uint32_t next, uint32_
 
     uint32_t name = emit_string(payload, "Resistance");
     uint32_t legacy = emit_string(payload, "g_legacygametype");
+    uint32_t mode = emit_string(payload, "Mode:");
     /* The connection screen reads its name from names[level]; this slot
      * receives the name's runtime address, and the level becomes the
      * slot's index from the table. Both RVAs are dword-aligned.
@@ -643,7 +676,60 @@ static bool build_cgame(payload_t *payload, uint32_t rva, uint32_t next, uint32_
     EMIT(0xbb, B4(slot_index));             /* mov ebx,index */
     emit_jump(payload, rva, 0x9aecu);
 
-    const uint32_t targets[] = { scoreboard, connect };
+    /* is_resistance(): ZF set when the serverinfo in ebp has
+     * g_legacygametype "1"; keeps every register.
+     */
+    uint32_t is_resistance = EMIT(0x60);    /* pushad */
+    emit_load_address(payload, rva, EBX, legacy);
+    EMIT(0x8b, 0xcd);                       /* mov ecx,ebp */
+    emit_call(payload, rva, CGAME_INFO_VALUE);
+    EMIT(0x66, 0x81, 0x38, '1', 0,          /* cmp word [eax],"1" */
+         0x61, 0xc3);                       /* popad; ret */
+
+    /* Scoreboard label, called in place of Lang_Text: "Mode:" instead of
+     * "#scorebrd-diff", which Lang_Text copies as it is.
+     */
+    uint32_t label = (uint32_t)payload->size;
+    emit_call(payload, rva, rva + is_resistance);
+    uint32_t lookup = emit_skip_if(payload, 0x75);
+    EMIT(0x53);                             /* push ebx */
+    emit_load_address(payload, rva, EBX, mode);
+    EMIT(0x89, 0x5c, 0x24, 0x08,            /* mov [esp+8],ebx: the key */
+         0x5b);                             /* pop ebx */
+    land(payload, lookup);
+    emit_jump(payload, rva, CGAME_LANG_TEXT);
+
+    /* Scoreboard diff multiplier: skipped with its floats computed, on to
+     * the players' pair with the stack it expects.
+     */
+    uint32_t diff_multi = (uint32_t)payload->size;
+    emit_call(payload, rva, rva + is_resistance);
+    uint32_t show_multi = emit_skip_if(payload, 0x75);
+    EMIT(0xdb, 0x44, 0x24, 0x28,            /* fild dword [esp+0x28] */
+         0xd9, 0x54, 0x24, 0x24,            /* fst dword [esp+0x24] */
+         0xd8, 0xc0, 0xd8, 0xc0,            /* fadd st,st; fadd st,st */
+         0xd9, 0x5c, 0x24, 0x34,            /* fstp dword [esp+0x34] */
+         0x83, 0xec, 0x14,                  /* sub esp,0x14 */
+         0x8d, 0x44, 0x24, 0x58);           /* lea eax,[esp+0x58] */
+    emit_jump(payload, rva, 0x76507u);
+    land(payload, show_multi);
+    EMIT(0x8d, 0x44, 0x24, 0x44);           /* replayed */
+    emit_call(payload, rva, CGAME_SET_COLOR);
+    emit_jump(payload, rva, 0x763b3u);
+
+    /* Scoreboard friendly fire: skipped by dropping the players' last
+     * Lang_Text arguments, on to the header's set_color(NULL).
+     */
+    uint32_t friendly_fire = (uint32_t)payload->size;
+    emit_call(payload, rva, rva + is_resistance);
+    uint32_t show_ff = emit_skip_if(payload, 0x75);
+    EMIT(0x83, 0xc4, 0x10);                 /* add esp,0x10 */
+    emit_jump(payload, rva, 0x76744u);
+    land(payload, show_ff);
+    emit_call(payload, rva, CGAME_SET_COLOR); /* replayed */
+    emit_jump(payload, rva, 0x76625u);
+
+    const uint32_t targets[] = { scoreboard, connect, label, diff_multi, friendly_fire };
     _Static_assert(ARRAY_SIZE(targets) == ARRAY_SIZE(patch_resistance_cgame_hooks),
                    "every CGAME hook needs a helper");
     resolve_hooks(patch_resistance_cgame_hooks, ARRAY_SIZE(targets), targets, rva);
