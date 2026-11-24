@@ -79,6 +79,7 @@ patch_sources = [git_version] + files(
 	'cursor_position.c',
 	'main_menu_ad.c',
 	'main_menu_github.c',
+	'main_menu_join.c',
 	'main_menu_top_edge.c',
 	'loading_background.c',
 	'loading_menu.c',

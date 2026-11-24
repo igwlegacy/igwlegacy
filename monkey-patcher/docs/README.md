@@ -32,6 +32,7 @@ Each functionality has a separate file in `patches/` at the repository root:
 | [rts_spectator.c](../../patches/rts_spectator.c) | Prevent entering RTS mode while spectating or dead |
 | [rts_grid.c](../../patches/rts_grid.c) | Snap RTS building placement to a configurable world-space grid |
 | [main_menu_ad.c](../../patches/main_menu_ad.c) | Main-menu promotional panel, ticker, and update request |
+| [main_menu_join.c](../../patches/main_menu_join.c) | Main-menu `MULTIPLAYER` button labelled `JOIN` |
 | [autoplay.c](../../patches/autoplay.c) | Automatically enter the game once loading finishes, without clicking `PLAY!` |
 | [valuable_markers.c](../../patches/valuable_markers.c) | Persistent models at every valuable spawn position |
 | [pickup_markers.c](../../patches/pickup_markers.c) | Persistent models at every dynamite, rocket launcher and radio spawn position |
