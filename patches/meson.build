@@ -84,6 +84,7 @@ patch_sources = [git_version] + files(
 	'browser_lan.c',
 	'browser_stop_hint.c',
 	'browser_leaderboard_banner.c',
+	'game_mode_vanilla.c',
 	'loading_background.c',
 	'loading_menu.c',
 	# 'autoplay.c',

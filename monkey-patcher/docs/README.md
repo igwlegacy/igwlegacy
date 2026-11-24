@@ -36,6 +36,7 @@ Each functionality has a separate file in `patches/` at the repository root:
 | [browser_lan.c](../../patches/browser_lan.c) | Server browser opening on `LAN` instead of `Internet` |
 | [browser_stop_hint.c](../../patches/browser_stop_hint.c) | Server browser refresh without the non-working `Press SPACE to stop` hint |
 | [browser_leaderboard_banner.c](../../patches/browser_leaderboard_banner.c) | Server browser without the `Visit www.igwdeath.com for the leaderboard!` banner |
+| [game_mode_vanilla.c](../../patches/game_mode_vanilla.c) | Host-game menu's `COOP` game mode labelled `VANILLA` |
 | [autoplay.c](../../patches/autoplay.c) | Automatically enter the game once loading finishes, without clicking `PLAY!` |
 | [valuable_markers.c](../../patches/valuable_markers.c) | Persistent models at every valuable spawn position |
 | [pickup_markers.c](../../patches/pickup_markers.c) | Persistent models at every dynamite, rocket launcher and radio spawn position |
