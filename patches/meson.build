@@ -83,6 +83,7 @@ patch_sources = [git_version] + files(
 	'main_menu_top_edge.c',
 	'browser_lan.c',
 	'browser_stop_hint.c',
+	'browser_leaderboard_banner.c',
 	'loading_background.c',
 	'loading_menu.c',
 	# 'autoplay.c',
