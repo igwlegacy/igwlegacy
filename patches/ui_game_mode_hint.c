@@ -7,7 +7,7 @@
  * focused control. For the "Game mode:" dropdown it only said "Choose the
  * game mode.", whatever the mode; it now shows the text of the selected
  * one, which changes as the selection does, also while the opened list
- * follows the mouse (popup_hover.c).
+ * follows the mouse (ui_popup_hover.c).
  *
  * Edit the texts below. Each entry belongs to the dropdown entry at the
  * same index: VANILLA, RESISTANCE and DEATHMATCH, in the order that

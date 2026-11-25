@@ -20,10 +20,10 @@ Each functionality has a separate file in `patches/` at the repository root:
 | [burning_screen.c](../../patches/burning_screen.c) | Prevent a false burning overlay at the start of a game |
 | [landing_dip.c](../../patches/landing_dip.c) | Eye-height dip on landing |
 | [death_camera.c](../../patches/death_camera.c) | Immediate spectator movement after death, without automatic camera rise |
-| [respawn_countdown.c](../../patches/respawn_countdown.c) | Respawn countdown rounded up to seconds, with text expiring at the respawn deadline |
-| [centerprint_position.c](../../patches/centerprint_position.c) | Crosshair centerprints (round start, round winner, airstrike, server `cp`) moved up a quarter of the screen |
-| [cursor_size.c](../../patches/cursor_size.c) | Shared cursor size for the main menu, pause menu and purchasing overlays |
-| [cursor_position.c](../../patches/cursor_position.c) | Independent cursor positions for opening the main and ingame menus and completing loading |
+| [ui_respawn_countdown.c](../../patches/ui_respawn_countdown.c) | Respawn countdown rounded up to seconds, with text expiring at the respawn deadline |
+| [ui_centerprint_position.c](../../patches/ui_centerprint_position.c) | Crosshair centerprints (round start, round winner, airstrike, server `cp`) moved up a quarter of the screen |
+| [ui_cursor_size.c](../../patches/ui_cursor_size.c) | Shared cursor size for the main menu, pause menu and purchasing overlays |
+| [ui_cursor_position.c](../../patches/ui_cursor_position.c) | Independent cursor positions for opening the main and ingame menus and completing loading |
 | [shotgun.c](../../patches/shotgun.c) | Editable hardcoded shotgun stats and pellet damage falloff |
 | [hmg_reload.c](../../patches/hmg_reload.c) | HMG reloading while undeployed and cancellation by undeploying |
 | [musket_zoom.c](../../patches/musket_zoom.c) | Editable right-click musket zoom-in duration and start delay |
@@ -32,18 +32,18 @@ Each functionality has a separate file in `patches/` at the repository root:
 | [rts_spectator.c](../../patches/rts_spectator.c) | Prevent entering RTS mode while spectating or dead |
 | [rts_grid.c](../../patches/rts_grid.c) | Snap RTS building placement to a configurable world-space grid |
 | [deathhand_prediction.c](../../patches/deathhand_prediction.c) | Client movement prediction blocked by the deathhand, as on the server |
-| [main_menu_ad.c](../../patches/main_menu_ad.c) | Main-menu promotional panel, ticker, and update request |
-| [main_menu_join.c](../../patches/main_menu_join.c) | Main-menu `MULTIPLAYER` button labelled `JOIN` |
-| [browser_lan.c](../../patches/browser_lan.c) | Server browser opening on `LAN` instead of `Internet` |
-| [browser_stop_hint.c](../../patches/browser_stop_hint.c) | Server browser refresh without the non-working `Press SPACE to stop` hint |
-| [browser_stop_button.c](../../patches/browser_stop_button.c) | Server browser `STOP` button stopping a refresh at once instead of restarting it against the second master server while no server has answered |
-| [browser_leaderboard_banner.c](../../patches/browser_leaderboard_banner.c) | Server browser without the `Visit www.igwdeath.com for the leaderboard!` banner |
-| [browser_news_hint.c](../../patches/browser_news_hint.c) | Server browser without the `Visit www.igwarlord.com for the latest news!` line |
-| [game_mode_vanilla.c](../../patches/game_mode_vanilla.c) | Host-game menu's `COOP` game mode labelled `VANILLA` |
+| [ui_main_menu_ad.c](../../patches/ui_main_menu_ad.c) | Main-menu promotional panel, ticker, and update request |
+| [ui_main_menu_join.c](../../patches/ui_main_menu_join.c) | Main-menu `MULTIPLAYER` button labelled `JOIN` |
+| [ui_browser_lan.c](../../patches/ui_browser_lan.c) | Server browser opening on `LAN` instead of `Internet` |
+| [ui_browser_stop_hint.c](../../patches/ui_browser_stop_hint.c) | Server browser refresh without the non-working `Press SPACE to stop` hint |
+| [ui_browser_stop_button.c](../../patches/ui_browser_stop_button.c) | Server browser `STOP` button stopping a refresh at once instead of restarting it against the second master server while no server has answered |
+| [ui_browser_leaderboard_banner.c](../../patches/ui_browser_leaderboard_banner.c) | Server browser without the `Visit www.igwdeath.com for the leaderboard!` banner |
+| [ui_browser_news_hint.c](../../patches/ui_browser_news_hint.c) | Server browser without the `Visit www.igwarlord.com for the latest news!` line |
+| [ui_game_mode_vanilla.c](../../patches/ui_game_mode_vanilla.c) | Host-game menu's `COOP` game mode labelled `VANILLA` |
 | [game_mode_resistance.c](../../patches/game_mode_resistance.c) | `RESISTANCE` coop game mode with friendly fire off, no difficulty multiplier and the god difficulty, flagged by `g_legacygametype 1` |
-| [game_mode_hint.c](../../patches/game_mode_hint.c) | Host-game menu's help box describing the selected game mode, with an editable multi-line text per mode |
-| [loading_game_mode.c](../../patches/loading_game_mode.c) | Loading screen naming the game mode instead of the maximum players, with the difficulty only for `Vanilla` |
-| [autoplay.c](../../patches/autoplay.c) | Automatically enter the game once loading finishes, without clicking `PLAY!` |
+| [ui_game_mode_hint.c](../../patches/ui_game_mode_hint.c) | Host-game menu's help box describing the selected game mode, with an editable multi-line text per mode |
+| [ui_loading_game_mode.c](../../patches/ui_loading_game_mode.c) | Loading screen naming the game mode instead of the maximum players, with the difficulty only for `Vanilla` |
+| [ui_autoplay.c](../../patches/ui_autoplay.c) | Automatically enter the game once loading finishes, without clicking `PLAY!` |
 | [valuable_markers.c](../../patches/valuable_markers.c) | Persistent models at every valuable spawn position |
 | [pickup_markers.c](../../patches/pickup_markers.c) | Persistent models at every dynamite, rocket launcher and radio spawn position |
 | [rts_buildable.c](../../patches/rts_buildable.c) | Translucent green overlay on buildable terrain in RTS mode |
@@ -175,7 +175,7 @@ The interpreter is in [wave_scripts/lua_runtime.c](../../patches/wave_scripts/lu
 
 ### Cursor size
 
-Set `CURSOR_SIZE` in [cursor_size.c](../../patches/cursor_size.c) and rebuild. It defaults to 32 units in the menus' 640x480 coordinate system and controls both the square main-menu/pause-menu cursor and the purchasing/RTS overlay cursor. Install the patched `uix86.dll` and `cgamex86.dll` together.
+Set `CURSOR_SIZE` in [ui_cursor_size.c](../../patches/ui_cursor_size.c) and rebuild. It defaults to 32 units in the menus' 640x480 coordinate system and controls both the square main-menu/pause-menu cursor and the purchasing/RTS overlay cursor. Install the patched `uix86.dll` and `cgamex86.dll` together.
 
 The menu cursor retains its existing UI scaling. The overlay cursor originally used a fixed 20-pixel size; it now scales both dimensions by `vidHeight / 480`, so 32 units draw as 32 pixels at 640x480 and 72 pixels at 1920x1080. Cursor position, click coordinates, shaders and texture coordinates keep their existing behavior. Shared float constants are left alone; private data and helper instructions occupy guarded function-alignment padding. The existing address relocation slots are preserved.
 
@@ -183,9 +183,9 @@ To omit this feature, comment out all three `REGISTER_CODE_RULE`/`REGISTER_CODE_
 
 ### Cursor position
 
-Set `MAIN_MENU_CURSOR_X/Y`, `INGAME_MENU_CURSOR_X/Y`, and `LOADING_COMPLETE_CURSOR_X/Y` in [cursor_position.c](../../patches/cursor_position.c), then rebuild the patcher and install the patched `uix86.dll`. All three positions default to `(320, 240)`, the center of the menu. Coordinates use the menus' 640x480 area with `(0, 0)` at the top left; X supports 0 through 640 and Y supports 0 through 480. The patch applies the UI's display scale and horizontal widescreen offset automatically.
+Set `MAIN_MENU_CURSOR_X/Y`, `INGAME_MENU_CURSOR_X/Y`, and `LOADING_COMPLETE_CURSOR_X/Y` in [ui_cursor_position.c](../../patches/ui_cursor_position.c), then rebuild the patcher and install the patched `uix86.dll`. All three positions default to `(320, 240)`, the center of the menu. Coordinates use the menus' 640x480 area with `(0, 0)` at the top left; X supports 0 through 640 and Y supports 0 through 480. The patch applies the UI's display scale and horizontal widescreen offset automatically.
 
-The main and ingame positions are set whenever those menus open. The loading-completion position is set once when loading finishes and the `PLAY!` button appears, including when loading is already complete as the loading menu opens. The main menu previously kept the existing mouse position, the ingame pause menu reset it to `(319, 80)` physical pixels, and loading completion used half the display width and 400 physical pixels down. Submenus and purchasing overlays retain their existing behavior. To omit this feature, comment out both registration lines in `cursor_position.c` and rebuild.
+The main and ingame positions are set whenever those menus open. The loading-completion position is set once when loading finishes and the `PLAY!` button appears, including when loading is already complete as the loading menu opens. The main menu previously kept the existing mouse position, the ingame pause menu reset it to `(319, 80)` physical pixels, and loading completion used half the display width and 400 physical pixels down. Submenus and purchasing overlays retain their existing behavior. To omit this feature, comment out both registration lines in `ui_cursor_position.c` and rebuild.
 
 ### Musket zoom timing
 
@@ -309,7 +309,7 @@ The server needs the patched `gamex86.dll` for the rules and the patched executa
 
 ### Game mode help texts
 
-The host-game menu's help box at its bottom left said `Choose the game mode.` whenever the `Game mode:` dropdown had the focus. It now shows a text of the selected mode instead, and changes with the selection, also while an opened list follows the mouse. The texts are the entries of `game_mode_hints` at the top of [game_mode_hint.c](../../patches/game_mode_hint.c), in the dropdown's order `VANILLA`, `RESISTANCE`, `DEATHMATCH`; an index without an entry keeps the retail text. A `\n` in a text starts a new line, which the patch turns into the `|` that the box's text draw breaks lines at; the draw also wraps long lines by itself. The box keeps its size, so only about five lines fit, and the draw truncates texts after 1023 bytes, which the build refuses. As with retail's help texts, a text starting with a single `#` is a key into the language files.
+The host-game menu's help box at its bottom left said `Choose the game mode.` whenever the `Game mode:` dropdown had the focus. It now shows a text of the selected mode instead, and changes with the selection, also while an opened list follows the mouse. The texts are the entries of `game_mode_hints` at the top of [ui_game_mode_hint.c](../../patches/ui_game_mode_hint.c), in the dropdown's order `VANILLA`, `RESISTANCE`, `DEATHMATCH`; an index without an entry keeps the retail text. A `\n` in a text starts a new line, which the patch turns into the `|` that the box's text draw breaks lines at; the draw also wraps long lines by itself. The box keeps its size, so only about five lines fit, and the draw truncates texts after 1023 bytes, which the build refuses. As with retail's help texts, a text starting with a single `#` is a key into the language files.
 
 The help box is drawn by the menu's status callback (`uix86` RVA `0x11e20`). Its jump table slot for the dropdown's case, a relocated dword, now points to a payload that makes the selected text pending and skips the case's `Com_sprintf()` into a 256-byte buffer. A hook at the push of that buffer for the draw (RVA `0x12030`) pushes the pending text instead, once, and otherwise replays the push, so the other controls' texts are unchanged.
 

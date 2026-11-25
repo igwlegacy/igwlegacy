@@ -6,7 +6,7 @@
  * plain JOIN, and an unknown key would be drawn as the key itself, so the
  * button gets a literal JOIN label instead.
  *
- * Literal labels normally take the small text path. main_menu_github.c's
+ * Literal labels normally take the small text path. ui_main_menu_github.c's
  * label dispatch helper sends those within the leaderboard key's former
  * "#menu-leaderboard" buffer through the normal button-label path, which
  * keeps the size and alignment of the other main-menu buttons; that patch

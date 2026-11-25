@@ -35,7 +35,7 @@ static const code_rule_t patch_main_menu_github[] = {
      * from here on, of which this helper takes 32. It preserves ECX and
      * recognizes literal labels by their address: anything within the
      * leaderboard key's former MAIN_MENU_LABELS_SIZE bytes, GITHUB at its
-     * start and further literals behind it (JOIN of main_menu_join.c). The
+     * start and further literals behind it (JOIN of ui_main_menu_join.c). The
      * buffer's address comes from call/pop, so rebasing needs no new
      * relocation: neg/lea leave the label's offset into the buffer in ECX,
      * which an unsigned compare checks against the buffer's size.
