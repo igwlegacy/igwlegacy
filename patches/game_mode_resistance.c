@@ -31,6 +31,10 @@
  * While RESISTANCE is selected, the host-game menu shows the mode's badge,
  * textures/ui/mmbdgres, where the three fixed controls it hides would be.
  *
+ * The menu remembers the selected mode in the archived CVAR
+ * ui_legacygamemode, the dropdown's index, and opens on it again, also
+ * after a restart of the game.
+ *
  * The server browser, the loading screens and the scoreboard name the
  * mode instead of the difficulty; the scoreboard also leaves out the diff
  * multiplier and friendly fire, which the mode fixes. The browser cannot learn it from the
@@ -105,6 +109,12 @@
 #define UI_NAME_DIFFICULTY 0x6007cu   /* "sv_difficulty" */
 #define UI_NAME_FRIENDLY_FIRE 0x61660u /* "g_friendlyfire" */
 #define UI_NAME_DIFF_MULTI 0x61670u   /* "sv_diffmulti" */
+/* The "Game mode:" dropdown's selected index, which the initializer's
+ * memset of the menu zeroes, and the CVAR its change event sets.
+ */
+#define UI_GAME_MODE 0x93184u
+#define UI_NAME_GAMETYPE 0x60098u     /* "g_gametype" */
+#define UI_GAME_MODES 3u
 
 /* The browser's difficulty column, before TITAN's or the retail level
  * chain: mov eax,[reg+d8]; add esp,0x10 after the previous column's
@@ -460,6 +470,8 @@ static bool build_ui(payload_t *payload, uint32_t rva, uint32_t next, uint32_t *
     uint32_t zero = rva + emit_string(payload, "0");
     uint32_t one = rva + emit_string(payload, "1");
     uint32_t god = rva + emit_string(payload, "4");
+    /* The dropdown's last selected index, for the next opening. */
+    uint32_t mode = rva + emit_string(payload, "ui_legacygamemode");
     /* Whether the next three hold the values from before RESISTANCE. */
     uint32_t saved = rva + emit_string(payload, "ui_resistancesaved");
     const struct { uint32_t name, control, cvar; } controls[] = {
@@ -501,11 +513,14 @@ static bool build_ui(payload_t *payload, uint32_t rva, uint32_t next, uint32_t *
     EMIT(0x5b, 0xc3);                       /* pop ebx; ret */
 
     /* select(index), in place of the mapper for the change event and the
-     * server start: apply the mode's rules, then map the index.
+     * server start, and called when the menu opens: remember the index,
+     * apply the mode's rules, then map the index. Every caller passes the
+     * dropdown's index.
      */
     uint32_t select = (uint32_t)payload->size;
     EMIT(0x53);                             /* push ebx */
     base = emit_anchor(payload, rva, EBX);
+    ui_set_int(payload, rva, base, mode, UI_GAME_MODE);
     EMIT(0x83, 0x7c, 0x24, 0x08, 0x01);     /* cmp dword [esp+8],1 */
     uint32_t resistance = emit_skip_if(payload, 0x74);
     emit_call(payload, rva, rva + restore);
@@ -556,16 +571,47 @@ static bool build_ui(payload_t *payload, uint32_t rva, uint32_t next, uint32_t *
     land(payload, other);
     EMIT(0x83, 0x7c, 0x24, 0x04, 0x01, 0x1b, 0xc0, 0xc3);
 
-    /* The menu always opens on VANILLA, so give back saved values before
-     * the initializer reads the CVARs into the controls. After it, add
-     * the badge as the menu's last item, hidden until the grey-out update
-     * shows it.
+    /* Unless the menu opens on RESISTANCE again, give back saved values
+     * before the initializer reads the CVARs into the controls; for
+     * RESISTANCE they stay saved and the controls read its rules.
      */
     uint32_t open = (uint32_t)payload->size;
+    EMIT(0x53);                             /* push ebx */
+    base = emit_anchor(payload, rva, EBX);
+    ui_archive(payload, rva, base, mode, zero);
+    ui_get(payload, rva, base, mode);
+    EMIT(0x83, 0xf8, 0x01);                 /* cmp eax,1 */
+    uint32_t keep = emit_skip_if(payload, 0x74);
     emit_call(payload, rva, rva + restore);
+    land(payload, keep);
+    EMIT(0x5b);                             /* pop ebx */
     emit_call(payload, rva, UI_MENU_INIT);
     EMIT(0x53, 0x57);                       /* push ebx; push edi */
     base = emit_anchor(payload, rva, EBX);
+
+    /* Select the remembered index, VANILLA's for any out of range, after
+     * the initializer zeroed it, then do what the dropdown's change event
+     * does: select() applies the mode's rules, and g_gametype gets the
+     * mapped index.
+     */
+    ui_get(payload, rva, base, mode);
+    EMIT(0x83, 0xf8, UI_GAME_MODES - 1u);   /* cmp eax,last */
+    uint32_t known = emit_skip_if(payload, 0x76); /* jbe */
+    EMIT(0x31, 0xc0);                       /* xor eax,eax */
+    land(payload, known);
+    ebx_op(payload, 0x89, EAX, base, UI_GAME_MODE); /* mov [ebx+d],eax */
+    EMIT(0x50);                             /* push eax */
+    emit_call(payload, rva, rva + select);
+    EMIT(0x89, 0x04, 0x24,                  /* mov [esp],eax */
+         0xdb, 0x04, 0x24,                  /* fild dword [esp] */
+         0xd9, 0x1c, 0x24);                 /* fstp dword [esp] */
+    push_address(payload, base, UI_NAME_GAMETYPE);
+    emit_call(payload, rva, UI_CVAR_SET_VALUE);
+    EMIT(0x83, 0xc4, 0x08);                 /* add esp,8 */
+
+    /* Add the badge as the menu's last item, hidden until the grey-out
+     * update shows it.
+     */
     /* Bitmap_Init overwrote the position and size in pixels, and the
      * draw cached the shader: start over from a zeroed item.
      */

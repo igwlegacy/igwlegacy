@@ -9,7 +9,8 @@
  *
  * The entry is already the default. The menu initializer zeroes its whole
  * item block, including the dropdown's selection, every time the menu
- * opens, so it always starts on the first entry.
+ * opens, so it starts on the first entry unless game_mode_resistance.c
+ * selects the remembered one afterwards.
  */
 static const code_rule_t patch_game_mode_vanilla[] = {
     { UI, true, "game mode VANILLA: name", 0x61340u, 8,
