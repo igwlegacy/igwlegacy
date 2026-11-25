@@ -74,6 +74,7 @@ patch_sources = [git_version] + files(
 	'burning_screen.c',
 	'landing_dip.c',
 	'deathhand_prediction.c',
+	'engineer_deathhand_goal.c',
 	'landing_bounce.c',
 	'reverse_weapon_anims.c',
 	'death_camera.c',

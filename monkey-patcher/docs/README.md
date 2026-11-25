@@ -32,6 +32,7 @@ Each functionality has a separate file in `patches/` at the repository root:
 | [rts_spectator.c](../../patches/rts_spectator.c) | Prevent entering RTS mode while spectating or dead |
 | [rts_grid.c](../../patches/rts_grid.c) | Snap RTS building placement to a configurable world-space grid |
 | [deathhand_prediction.c](../../patches/deathhand_prediction.c) | Client movement prediction blocked by the deathhand, as on the server |
+| [engineer_deathhand_goal.c](../../patches/engineer_deathhand_goal.c) | Engineers rebuilding the deathhand pick a valid spot instead of reading past its table, which could crash the game |
 | [ui_main_menu_ad.c](../../patches/ui_main_menu_ad.c) | Main-menu promotional panel, ticker, and update request |
 | [ui_main_menu_join.c](../../patches/ui_main_menu_join.c) | Main-menu `MULTIPLAYER` button labelled `JOIN` |
 | [ui_browser_lan.c](../../patches/ui_browser_lan.c) | Server browser opening on `LAN` instead of `Internet` |
@@ -270,6 +271,10 @@ The positions are read and cached on the first main-world render after each worl
 ### Deathhand prediction
 
 The server stops players at the deathhand, but retail's client movement prediction skips every structure (eTypes 15 to 19), so a client walked into the deathhand and was then pulled back by the server. These prediction misses got larger with ping, so mostly players other than the host noticed them. The patched `cgamex86.dll` uses the server's rule in `CG_ClipMoveToEntities`: of the structures, only an eType 15 whose `otherEntityNum2` is `1`, the deathhand, blocks the predicted movement. The client already receives the deathhand's contents and box, so prediction now collides where the server does. Other structures stay passable on both sides. Only clients need this patch. The helper spans two guarded int3 padding runs chained by a relative jump, so no new PE relocations are needed. Keep all four rules in [deathhand_prediction.c](../../patches/deathhand_prediction.c) enabled together.
+
+### Engineer deathhand goal
+
+An engineer keeps its target in `routeIndex`, which indexes different tables in different states. While the deathhand stands it roams between confederate camps, so the field holds a camp index (palace3 has 166 camps). Once the deathhand is destroyed, retail's `G_EngineerBuildDeathhand` (gamex86 `0x50170`) reused that field as an index into the at most 10 deathhand spots and only drew a new one when it was `-1`. A stale camp index read past the table into the NPC records, so the engineer took another NPC's state for its goal: usually it just moved somewhere odd, sometimes it overwrote that NPC's position, and when a float landed where the goal's area number belongs the engine crashed in `AAS_AreaDoNotEnter`, quitting to the desktop right after a deathhand went down. The patched `gamex86.dll` replaces the `-1` test with a call to a small helper in the injected section that compares `routeIndex` unsigned against `igw_numDeathhandGoals`, so `-1` and any out-of-range index draw a fresh spot through retail's own `rand()` path. The helper reads the count through call/pop and the replaced bytes carry no relocation, so no new PE relocations are needed. Only the server needs this patch. Keep the hook and the payload feature in [engineer_deathhand_goal.c](../../patches/engineer_deathhand_goal.c) enabled together.
 
 ### RTS spectator guard
 
