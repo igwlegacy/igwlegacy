@@ -81,6 +81,7 @@ patch_sources = [git_version] + files(
 	'main_menu_github.c',
 	'main_menu_join.c',
 	'main_menu_top_edge.c',
+	'popup_background.c',
 	'browser_lan.c',
 	'browser_stop_hint.c',
 	'browser_stop_button.c',
