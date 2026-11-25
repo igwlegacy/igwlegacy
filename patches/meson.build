@@ -90,6 +90,7 @@ patch_sources = [git_version] + files(
 	'browser_news_hint.c',
 	'game_mode_resistance.c',
 	'game_mode_vanilla.c',
+	'game_mode_hint.c',
 	'loading_background.c',
 	'loading_menu.c',
 	'loading_game_mode.c',

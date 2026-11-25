@@ -40,6 +40,7 @@ Each functionality has a separate file in `patches/` at the repository root:
 | [browser_news_hint.c](../../patches/browser_news_hint.c) | Server browser without the `Visit www.igwarlord.com for the latest news!` line |
 | [game_mode_vanilla.c](../../patches/game_mode_vanilla.c) | Host-game menu's `COOP` game mode labelled `VANILLA` |
 | [game_mode_resistance.c](../../patches/game_mode_resistance.c) | `RESISTANCE` coop game mode with friendly fire off, no difficulty multiplier and the god difficulty, flagged by `g_legacygametype 1` |
+| [game_mode_hint.c](../../patches/game_mode_hint.c) | Host-game menu's help box describing the selected game mode, with an editable multi-line text per mode |
 | [loading_game_mode.c](../../patches/loading_game_mode.c) | Loading screen naming the game mode instead of the maximum players, with the difficulty only for `Vanilla` |
 | [autoplay.c](../../patches/autoplay.c) | Automatically enter the game once loading finishes, without clicking `PLAY!` |
 | [valuable_markers.c](../../patches/valuable_markers.c) | Persistent models at every valuable spawn position |
@@ -300,6 +301,12 @@ Instead of god's `skill-g.cfg` and `scripts/waves/<map>-g.xml`, the server execs
 While `RESISTANCE` is selected, the host-game menu shows the mode's badge, `textures/ui/mmbdgres`, above `Map:`, where the three controls the mode fixes would be. The patched `uix86.dll` names the mode on the loading screen and shows `Resist` in the server browser's difficulty column. The patched `cgamex86.dll` names it on the connection screen, and the scoreboard's header reads `Mode: Resistance` instead of the difficulty and leaves out `Diff Multiplier:` and `Friendly Fire:`, whose values the mode fixes. The browser only sees the servers' info responses, which have no `g_legacygametype`, so the patched `igwarlord.exe` and `igwarlord-server.exe` report difficulty `6` for a `RESISTANCE` server there. An unpatched browser leaves the difficulty column of such a server empty.
 
 The server needs the patched `gamex86.dll` for the rules and the patched executable for the browser entry; clients need the patched `uix86.dll` and `cgamex86.dll` for the names. The UI changes hook the three calls of the dropdown's index mapper, which now maps the three entries to `g_gametype` 3, 3 and 0, and use a payload feature in the UI DLL. The engine changes are a small cave in each executable's zero-filled `.text` slack, whose virtual size is extended to cover it.
+
+### Game mode help texts
+
+The host-game menu's help box at its bottom left said `Choose the game mode.` whenever the `Game mode:` dropdown had the focus. It now shows a text of the selected mode instead, and changes with the selection, also while an opened list follows the mouse. The texts are the entries of `game_mode_hints` at the top of [game_mode_hint.c](../../patches/game_mode_hint.c), in the dropdown's order `VANILLA`, `RESISTANCE`, `DEATHMATCH`; an index without an entry keeps the retail text. A `\n` in a text starts a new line, which the patch turns into the `|` that the box's text draw breaks lines at; the draw also wraps long lines by itself. The box keeps its size, so only about five lines fit, and the draw truncates texts after 1023 bytes, which the build refuses. As with retail's help texts, a text starting with a single `#` is a key into the language files.
+
+The help box is drawn by the menu's status callback (`uix86` RVA `0x11e20`). Its jump table slot for the dropdown's case, a relocated dword, now points to a payload that makes the selected text pending and skips the case's `Com_sprintf()` into a 256-byte buffer. A hook at the push of that buffer for the draw (RVA `0x12030`) pushes the pending text instead, once, and otherwise replays the push, so the other controls' texts are unchanged.
 
 ### CVAR mapping
 
