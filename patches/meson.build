@@ -15,6 +15,9 @@ blob_sources = {
 		'wave_scripts/toml.c',
 		'../vendor/tomlc17/src/tomlc17.c',
 	),
+	'cgame': files(
+		'resistance_airships/airships.c',
+	),
 }
 blob_include_dirs = {
 	'game': [
@@ -90,6 +93,7 @@ patch_sources = [git_version] + files(
 	'ui_browser_leaderboard_banner.c',
 	'ui_browser_news_hint.c',
 	'game_mode_resistance.c',
+	'resistance_airships.c',
 	'ui_game_mode_vanilla.c',
 	'ui_game_mode_hint.c',
 	'ui_loading_background.c',

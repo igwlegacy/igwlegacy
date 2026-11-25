@@ -19,6 +19,7 @@ blob_headers = files(
   'blob/include/stdlib.h',
   'blob/include/string.h',
   'blob/include/time.h',
+  'blob/sdk/cgamex86.h',
   'blob/sdk/gamex86.h',
 )
 blob_targets = []
