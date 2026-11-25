@@ -31,6 +31,7 @@ Each functionality has a separate file in `patches/` at the repository root:
 | [team_repair.c](../../patches/team_repair.c) | Toolkit refills a teammate's current clip for money |
 | [rts_spectator.c](../../patches/rts_spectator.c) | Prevent entering RTS mode while spectating or dead |
 | [rts_grid.c](../../patches/rts_grid.c) | Snap RTS building placement to a configurable world-space grid |
+| [deathhand_prediction.c](../../patches/deathhand_prediction.c) | Client movement prediction blocked by the deathhand, as on the server |
 | [main_menu_ad.c](../../patches/main_menu_ad.c) | Main-menu promotional panel, ticker, and update request |
 | [main_menu_join.c](../../patches/main_menu_join.c) | Main-menu `MULTIPLAYER` button labelled `JOIN` |
 | [browser_lan.c](../../patches/browser_lan.c) | Server browser opening on `LAN` instead of `Internet` |
@@ -265,6 +266,10 @@ Dynamite positions are the map's `weapon_dynamite` entities. Rocket launcher and
 Every position drops to the first surface a point trace hits within 4096 units below it, as items do; the trace starts `PICKUP_MARKER_TRACE_LIFT` units above the position. Set the model paths, `PICKUP_MARKER_OFFSET_X`, `_Y` and `_Z`, `PICKUP_MARKER_SIZE` and the trace lift at the top of `patches/pickup_markers.c`, then rebuild.
 
 The positions are read and cached on the first main-world render after each world load, consuming the BSP entity stream through EOF like `valuable_markers.c`. Wave scripts are read up to 32 KiB. The feature name must sort before `valuable_markers`, because that feature does not pass world loads on to later features. To omit this feature, comment out `REGISTER_PAYLOAD_FEATURE(pickup_markers)` and rebuild.
+
+### Deathhand prediction
+
+The server stops players at the deathhand, but retail's client movement prediction skips every structure (eTypes 15 to 19), so a client walked into the deathhand and was then pulled back by the server. These prediction misses got larger with ping, so mostly players other than the host noticed them. The patched `cgamex86.dll` uses the server's rule in `CG_ClipMoveToEntities`: of the structures, only an eType 15 whose `otherEntityNum2` is `1`, the deathhand, blocks the predicted movement. The client already receives the deathhand's contents and box, so prediction now collides where the server does. Other structures stay passable on both sides. Only clients need this patch. The helper spans two guarded int3 padding runs chained by a relative jump, so no new PE relocations are needed. Keep all four rules in [deathhand_prediction.c](../../patches/deathhand_prediction.c) enabled together.
 
 ### RTS spectator guard
 
