@@ -40,7 +40,7 @@ A `scripts/waves/<map>-<level>.lua` takes precedence over both. It replaces all 
 
 A wave script's `MAXCOUNTS` `VEHICLES` may ask for up to 16 live vehicles instead of retail's 4, in both the `.xml` and the `.toml`; without it the default stays 4.
 
-A weapon, upgrade or structure whose cost in the skill config is 10000 or more cannot be bought. In the in-game shop, the spawn weapon and upgrade pages, the RTS build menu and the RTS structure upgrade button its button turns a dark grey, distinct from the regular looks including the grey of merely unaffordable structures, ignores clicks and shows no price, and an unpurchasable upgrade tier greys out all later tiers of its chain too. The server refuses such weapons and upgrades as well, even when sale credit would cover them.
+A weapon, upgrade or structure whose cost in the skill config is 10000 or more cannot be bought. In the in-game shop, the spawn weapon and upgrade pages, the RTS build menu and the RTS structure upgrade button its button turns completely black, distinct from the regular looks including the grey of merely unaffordable structures, ignores clicks and shows no price, and a weapon or upgrade loses its icon as well. An unpurchasable upgrade tier does the same to all later tiers of its chain. `UNPURCHASABLE_DIMMING` in `patches/unpurchasable.c` sets how dark such buttons get in percent; below 100 they are a dark grey instead and weapons and upgrades keep their icons. The server refuses such weapons and upgrades as well, even when sale credit would cover them.
 
 Archive paths start directly with `scripts/`, `sound/`, etc. Sorted entries,
 fixed timestamps and permissions, and a fixed compression level make the
