@@ -47,6 +47,8 @@ TEXTURE_RULES = {
     "textures/gfx/cursor.dds": ("cursor.png", None),
     "textures/ui/cursor.dds": ("cursor.png", None),
 
+    "textures/ui/mmbdgres.dds": ("mm-badge-resistance.png", "512x1536"),
+
     "textures/ui/mmbg1.dds": ("wallpaper.png", "2048x2048"),
     "textures/ui/mmbg1ws.dds": ("wallpaper.png", "2048x2048"),
     "textures/ui/mmbottomedge1.dds": ("nothing.png", "256x256"),
