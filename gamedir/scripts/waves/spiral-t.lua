@@ -165,6 +165,7 @@ local WAVES = {
       vehicles = { "scarab", "ontos", "scarab", "walker" },
       roamers = { { "herrad", 1 } } },
     { size = "small", conscripts = 2, vehicles = { "scarab", "ontos", "scarab" } },
+    { size = "small", conscripts = 2, vehicles = { "scarab", "ontos", "scarab" }, roamers = { { "herrad", 40 } } },
 }
 
 -- The waves after the XML's: bigger every time, with a random vehicle or
@@ -291,7 +292,7 @@ local function send_wave(t, k)
     end
 
     igw.banner(string.format("WAVE %d", k))
-    igw.sound(SOUND[wave.size])
+    igw.incoming(wave.size)
     print(string.format("wave %d at %s: %d conscripts (templar %.2f), %d vehicles",
                         k, clock(t), count, templar, armour))
 end

@@ -13,7 +13,7 @@
 	<MINWAVEDIST_LARGE>1000</MINWAVEDIST_LARGE>
 	<ROAMERINTERVAL>1000</ROAMERINTERVAL>
 	<SMALLWAVE_TIME>60000</SMALLWAVE_TIME>
-	<MEDIUMWAVE_TIME>200000</MEDIUMWAVE_TIME>	
+	<MEDIUMWAVE_TIME>200000</MEDIUMWAVE_TIME>
 </WAVESETTINGS>
 
 <SKILLSETTINGS>
@@ -23,7 +23,7 @@
 <sk_stronghold_morale>5</sk_stronghold_morale>
 <sk_deadofficer_morale>21</sk_deadofficer_morale>
 <sk_officer_morale>8</sk_officer_morale>
-<sk_officer_respawntime>25000</sk_officer_respawntime>	
+<sk_officer_respawntime>25000</sk_officer_respawntime>
 
 <sk_Cmorale_max>1000</sk_Cmorale_max>
 <sk_Amorale_max>400</sk_Amorale_max>
@@ -54,9 +54,9 @@
 <AI_SETTINGS>
 	<AIM>0.9</AIM>
 	<GANGSIZE>5</GANGSIZE>
-        <SQUADSIZE>4</SQUADSIZE>
-        <REACTIONTIME>200</REACTIONTIME>
-        <WAVEDISTANCE>80</WAVEDISTANCE>
+  <SQUADSIZE>4</SQUADSIZE>
+  <REACTIONTIME>200</REACTIONTIME>
+  <WAVEDISTANCE>80</WAVEDISTANCE>
 </AI_SETTINGS>
 
 

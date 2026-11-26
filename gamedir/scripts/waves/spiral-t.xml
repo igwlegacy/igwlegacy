@@ -33,12 +33,11 @@
 <sk_Amorale_start>400</sk_Amorale_start>
 <sk_officer_firstspawntime>1000</sk_officer_firstspawntime>
 
-<sk_player_moralecost>3</sk_player_moralecost>
+<sk_player_moralecost>30</sk_player_moralecost>
 <sk_bot_moralecost>3</sk_bot_moralecost>
 <sk_npc_moralecost>1</sk_npc_moralecost>
 <sk_vehicle_moralecost>10</sk_vehicle_moralecost>
 
-<sk_immortal_time>1000</sk_immortal_time>
 <sk_max_food>4</sk_max_food>
 <sk_max_jewel>3</sk_max_jewel>
 
@@ -56,6 +55,7 @@
   <SQUADSIZE>20</SQUADSIZE>
   <REACTIONTIME>200</REACTIONTIME>
   <WAVEDISTANCE>70</WAVEDISTANCE>
+  <SCALE_GRENADIER>5</SCALE_GRENADIER>
 </AI_SETTINGS>
 
 
