@@ -19,16 +19,15 @@
  */
 static const char *const game_mode_hints[] = {
     /* VANILLA */
-    "Vanilla - The original cooperative game against the computer.\n"
-    "Difficulty, diff multiplier and friendly fire can be chosen freely.",
+    "^4Vanilla^7 - Original IG:W COOP\n"
+    "experience. Trve and untouched.",
 
     /* RESISTANCE */
-    "Resistance - A cooperative game with fixed rules.\n"
-    "God difficulty, no diff multiplier and no friendly fire.\n"
-    "Each map needs its own Resistance wave script.",
+    "^1Resistance^7 - Vanilla COOP mechanics with updated balance.\n"
+    "Increased difficulty and a custom campaign with varying rules per map.",
 
     /* DEATHMATCH */
-    "Deathmatch - Players fight each other.",
+    "^0Deathmatch^7 - Players fight each other.",
 };
 
 /* The draw copies the text into a buffer of this many bytes. */

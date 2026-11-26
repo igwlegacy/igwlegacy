@@ -1,5 +1,7 @@
 #include "patches.h"
 
+#include <string.h>
+
 /* Anything priced at UNPURCHASABLE or more by the skill config cannot be
  * bought: weapons (sk_weapcost_*), player upgrades (sk_upgrade_*), RTS
  * structures (sk_cost_*) and structure upgrades. The client greys those
@@ -19,7 +21,7 @@
  * 2 hovered (light grey) and 3 pressed or owned (dark grey). The weapon and
  * upgrade buttons get a fifth one, UNPURCHASABLE_STATE, which every retail
  * input handler ignores like the disabled one and which the button draw
- * hooks render in a dark grey; their price labels lose their text
+ * hooks render in black; their price labels lose their text
  * meanwhile. The RTS build and structure upgrade buttons get a sixth
  * state, UNPURCHASABLE_ICON_STATE, for the same, as their icons order
  * their frames differently, and lose their price text as well.
@@ -55,18 +57,31 @@ _Static_assert(UNPURCHASABLE > 9999u, "money reaches up to 9999");
  * bytes, their text at the same +0x8c.
  */
 #define LABEL_SIZE 0x4e4u
-/* UNPURCHASABLE_STATE is drawn with the hovered frame of the buy button
- * texture, light grey, tinted by DIM (0.15f as IEEE bits): a near black
- * grey, darker than the owned dark grey frame and than the green and red
- * ones, and neutral. The RTS icons (textures/ui/hud/buyicons/) order
- * their frames normal, disabled grey, hovered and pressed, all in
- * color but the disabled one. UNPURCHASABLE_ICON_STATE is drawn with that
- * frame, mean brightness 44, tinted by DIM_ICON (0.35f) to about the same
- * darkness. The frame is 6 minus the state, the tint the state's entry of
- * the tints from UNPURCHASABLE_STATE on.
+/* A widget's image, a shader handle the image draw skips while 0. */
+#define WIDGET_SHADER 0x34u
+/* How much darker than their frame unpurchasable buttons are drawn, in
+ * percent: 0 leaves the frame as it is, 100 makes the button completely
+ * black.
  */
-#define DIM 0x3e19999au
-#define DIM_ICON 0x3eb33333u
+#define UNPURCHASABLE_DIMMING 100u
+_Static_assert(UNPURCHASABLE_DIMMING <= 100u, "a percentage");
+/* Completely black weapon and upgrade buttons also hide the icon beside
+ * them.
+ */
+#define HIDE_ICONS (UNPURCHASABLE_DIMMING == 100u)
+
+/* UNPURCHASABLE_STATE is drawn with the hovered frame of the buy button
+ * texture, light grey with a mean brightness of BUTTON_GREY, and
+ * UNPURCHASABLE_ICON_STATE with the disabled frame of the RTS icons
+ * (textures/ui/hud/buyicons/), whose frames are normal, disabled grey,
+ * hovered and pressed, all in color but the disabled one. Those grey
+ * frames are about ICON_GREY bright, so the icons' tint is raised by
+ * BUTTON_GREY / ICON_GREY for both to come out alike. The frame is 6
+ * minus the state, the tint the state's entry of the tints from
+ * UNPURCHASABLE_STATE on.
+ */
+#define BUTTON_GREY 105.0f
+#define ICON_GREY 44.0f
 _Static_assert(6u - UNPURCHASABLE_STATE == 2u && 6u - UNPURCHASABLE_ICON_STATE == 1u,
                "the hovered and the disabled frame");
 
@@ -258,9 +273,37 @@ static void set_state(payload_t *payload, unsigned reg, uint32_t state, uint32_t
     emit_land(payload, done);
 }
 
+/* Hides or shows the icon of the label at offset label from edx, whose
+ * shader handle is kept at the RVA slot while hidden: cleared when eax is
+ * nonzero (blocked), else put back if it is cleared. The menus set their
+ * icons once, when they are built. The anchor at base is in esi; clobbers
+ * edi.
+ */
+static void label_icon(payload_t *payload, uint32_t base, uint32_t label, uint32_t slot)
+{
+    uint32_t icon = label + WIDGET_SHADER;
+    EMIT(0x85, 0xc0);                       /* test eax,eax */
+    uint32_t buyable = emit_skip_if(payload, 0x74); /* jz */
+    EMIT(0x8b, 0xba, B4(icon));             /* mov edi,[edx+icon] */
+    EMIT(0x85, 0xff);                       /* test edi,edi */
+    uint32_t hidden = emit_skip_if(payload, 0x74); /* jz: already hidden */
+    EMIT(0x89, 0xbe, B4(slot - base));      /* mov [esi+slot],edi */
+    EMIT(0xc7, 0x82, B4(icon), B4(0u));     /* mov dword [edx+icon],0 */
+    uint32_t done = emit_skip_if(payload, 0xeb); /* jmp */
+    emit_land(payload, buyable);
+    EMIT(0x83, 0xba, B4(icon), 0);          /* cmp dword [edx+icon],0 */
+    uint32_t shown = emit_skip_if(payload, 0x75); /* jne: still shown */
+    EMIT(0x8b, 0xbe, B4(slot - base));      /* mov edi,[esi+slot] */
+    EMIT(0x89, 0xba, B4(icon));             /* mov [edx+icon],edi */
+    emit_land(payload, shown);
+    emit_land(payload, hidden);
+    emit_land(payload, done);
+}
+
 /* One menu page's weapons or upgrades. Prices are vmCvar_t integers from
  * the RVA costs on, and the buttons' states and the price labels menu
- * offsets from state and label on, BUTTON_SIZE and LABEL_SIZE apart. With
+ * offsets from state and label on, BUTTON_SIZE and LABEL_SIZE apart; the
+ * labels' hidden icons are kept from the RVA icons on, a dword each. With
  * chains, health 1-4 (items 0-3) and firepower 1-4 (4-7) each block every
  * tier after an unpurchasable one that is not owned, since those need it
  * first.
@@ -270,6 +313,7 @@ typedef struct {
     unsigned count;
     uint32_t state, label;
     bool chains;
+    uint32_t icons;
 } items_t;
 
 /* Runs after the retail refresh, which leaves owned items pressed and
@@ -277,7 +321,8 @@ typedef struct {
  * UNPURCHASABLE or more, or blocked by its chain, becomes
  * UNPURCHASABLE_STATE and loses its price text. One that no longer is goes
  * back to disabled, from which the next retail refresh picks its state
- * again, and gets its price back. The menu is in edx and the anchor at
+ * again, and gets its price back. With HIDE_ICONS the label's icon goes
+ * and comes back with the price. The menu is in edx and the anchor at
  * base in esi; eax, ecx and edi are scratch.
  */
 static void grey_items(payload_t *payload, uint32_t base, const items_t *items,
@@ -299,8 +344,11 @@ static void grey_items(payload_t *payload, uint32_t base, const items_t *items,
         if (chained)
             EMIT(0x89, 0xc1);               /* mov ecx,eax */
         set_state(payload, EDX, state, UNPURCHASABLE_STATE);
+        uint32_t label = items->label + i * LABEL_SIZE;
+        if (HIDE_ICONS)
+            label_icon(payload, base, label, items->icons + i * 4u);
         EMIT(0x85, 0xc0);                   /* test eax,eax */
-        price_text(payload, EDX, items->label + i * LABEL_SIZE + BUTTON_TEXT, cost, show_price);
+        price_text(payload, EDX, label + BUTTON_TEXT, cost, show_price);
     }
 }
 
@@ -346,8 +394,27 @@ static bool build_cgame(payload_t *payload, uint32_t rva, uint32_t next, uint32_
      * vec4_t per state from UNPURCHASABLE_STATE on.
      */
     uint32_t dimming = EMIT(B4(0u));
-    uint32_t tints = EMIT(B4(DIM), B4(DIM), B4(DIM), B4(0x3f800000u));
-    EMIT(B4(DIM_ICON), B4(DIM_ICON), B4(DIM_ICON), B4(0x3f800000u));
+    float tint = 1.0f - (float)UNPURCHASABLE_DIMMING / 100.0f;
+    float icon_tint = tint * BUTTON_GREY / ICON_GREY;
+    if (icon_tint > 1.0f)
+        icon_tint = 1.0f;
+    const float tints_rgba[] = { tint, tint, tint, 1.0f, icon_tint, icon_tint, icon_tint, 1.0f };
+    uint32_t tints = (uint32_t)payload->size;
+    for (size_t i = 0; i < ARRAY_SIZE(tints_rgba); ++i) {
+        uint32_t bits;
+        memcpy(&bits, &tints_rgba[i], sizeof(bits)); /* the IEEE single bits */
+        EMIT(B4(bits));
+    }
+    /* Then the hidden icons of the shop's weapons and upgrades and of
+     * the spawn upgrade and weapon pages, one zeroed dword per item.
+     */
+    uint32_t icons[4];
+    const unsigned icon_counts[4] = { 9, 12, 12, 9 };
+    for (size_t page = 0; page < 4; ++page) {
+        icons[page] = rva + (uint32_t)payload->size;
+        for (unsigned i = 0; i < icon_counts[page]; ++i)
+            EMIT(B4(0u));
+    }
     uint32_t show_price = emit_show_price(payload, rva);
 
     /* In-game shop: call the retail refresh with the same argument
@@ -360,8 +427,8 @@ static bool build_cgame(payload_t *payload, uint32_t rva, uint32_t next, uint32_
     EMIT(0x60);                             /* pushad */
     uint32_t base = emit_anchor(payload, rva, ESI);
     EMIT(0x8b, 0x54, 0x24, 0x24);           /* mov edx,[esp+0x24]: menu */
-    const items_t shop_weapons = { WEAPON_COSTS, 9, 0x570u + BUTTON_STATE, 0x351cu, false };
-    const items_t shop_upgrades = { UPGRADE_COSTS, 12, 0x6120u + BUTTON_STATE, 0xa0b0u, true };
+    const items_t shop_weapons = { WEAPON_COSTS, 9, 0x570u + BUTTON_STATE, 0x351cu, false, icons[0] };
+    const items_t shop_upgrades = { UPGRADE_COSTS, 12, 0x6120u + BUTTON_STATE, 0xa0b0u, true, icons[1] };
     grey_items(payload, base, &shop_weapons, show_price);
     grey_items(payload, base, &shop_upgrades, show_price);
     EMIT(0x61, 0xc3);                       /* popad; ret */
@@ -372,7 +439,7 @@ static bool build_cgame(payload_t *payload, uint32_t rva, uint32_t next, uint32_
     /* Spawn upgrade page, at its refresh's epilogue. */
     uint32_t upgrade_page = (uint32_t)payload->size;
     base = begin_menu(payload, rva, EBP);
-    const items_t page_upgrades = { UPGRADE_COSTS, 12, 0x15bcu + BUTTON_STATE, 0x554cu, true };
+    const items_t page_upgrades = { UPGRADE_COSTS, 12, 0x15bcu + BUTTON_STATE, 0x554cu, true, icons[2] };
     grey_items(payload, base, &page_upgrades, show_price);
     EMIT(0x61);                             /* popad */
     EMIT(0x8b, 0x4c, 0x24, 0x24, 0x5f);     /* retail: mov ecx,[esp+0x24]; pop edi */
@@ -384,7 +451,7 @@ static bool build_cgame(payload_t *payload, uint32_t rva, uint32_t next, uint32_
      */
     uint32_t weapon_page = (uint32_t)payload->size;
     base = begin_menu(payload, rva, EBX);
-    const items_t page_weapons = { WEAPON_COSTS, 9, 0x1f84u + BUTTON_STATE, 0x5f14u, false };
+    const items_t page_weapons = { WEAPON_COSTS, 9, 0x1f84u + BUTTON_STATE, 0x5f14u, false, icons[3] };
     grey_items(payload, base, &page_weapons, show_price);
     EMIT(0x61);                             /* popad */
     EMIT(0x8b, 0x4c, 0x24, 0x14, 0x5b);     /* retail: mov ecx,[esp+0x14]; pop ebx */

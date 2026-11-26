@@ -95,10 +95,10 @@
  * the server name's entry field and the Map label, at the texture's
  * aspect of 4:1.
  */
-#define BADGE_X 116.0f
-#define BADGE_Y 166.0f
-#define BADGE_WIDTH 238.0f
-#define BADGE_HEIGHT 59.5f
+#define BADGE_X 120.0f
+#define BADGE_Y 145.0f
+#define BADGE_WIDTH 250.0f
+#define BADGE_HEIGHT 100.0f
 
 /* The menu's control values, which its initializer reads from the CVARs
  * whose names follow, and which each control's event writes back.

@@ -62,26 +62,56 @@ blob_sse2_sources = {
 }
 
 patch_sources = [git_version] + files(
-	'version.c',
-	'no_steam.c',
-	'disable_bobbing.c',
-	'fog.c',
-	'maxfps.c',
-	'net_defaults.c',
 	# 'ambient_sounds.c',
-	'screen_shake.c',
-	'damage_kick.c',
-	'burning_screen.c',
-	'landing_dip.c',
+	'bot_slots.c',
+	'death_camera.c',
+	'flood_protect.c',
+	'version.c',
+
+	## difficulty / spawn behavior
+	# 'difficulty_titan.c',
+	'wave_scripts.c',
+	'max_vehicles.c',
+
+	## gameplay
 	'deathhand_prediction.c',
 	'engineer_deathhand_goal.c',
 	'landing_bounce.c',
+	'rts_grid.c',
+	'rts_spectator.c',
+
+	## visual
+	'burning_screen.c',
+	'fog.c',
+	'heat_haze.c',
 	'reverse_weapon_anims.c',
-	'death_camera.c',
-	'ui_respawn_countdown.c',
-	'ui_centerprint_position.c',
-	'ui_cursor_size.c',
+	'unpurchasable.c',
+	'use_shaders.c',
+
+	## visual - markers
+	'pickup_markers.c',
+	'stronghold_markers.c',
+	'valuable_markers.c',
+
+	## visual - screenshakers
+	'damage_kick.c',
+	'disable_bobbing.c',
+	'landing_dip.c',
+	'screen_shake.c',
+
+	## engine basics
+	'console_stdout.c',
+	'console_visibility.c',
+	'no_steam.c',
+	'skip_intro.c',
+	'window_close.c',
+
+	## menu
 	'ui_cursor_position.c',
+	'ui_cursor_size.c',
+	'ui_loading_background.c',
+	'ui_loading_menu.c',
+	'ui_loading_game_mode.c',
 	'ui_main_menu_ad.c',
 	'ui_main_menu_github.c',
 	'ui_main_menu_join.c',
@@ -97,30 +127,20 @@ patch_sources = [git_version] + files(
 	'resistance_airships.c',
 	'ui_game_mode_vanilla.c',
 	'ui_game_mode_hint.c',
-	'ui_loading_background.c',
-	'ui_loading_menu.c',
-	'ui_loading_game_mode.c',
+
+	## ingame hud/menu
+	'ui_respawn_countdown.c',
+	'ui_centerprint_position.c',
+
+	## cvar overrides
+	'maxfps.c',
+	'net_defaults.c',
+
+	## broken "features"
 	# 'ui_autoplay.c',
-	'valuable_markers.c',
-	'stronghold_markers.c',
-	'pickup_markers.c',
-	'skip_intro.c',
-	'bot_slots.c',
-	'flood_protect.c',
-	'console_stdout.c',
-	'console_visibility.c',
-	'window_close.c',
-	'use_shaders.c',
-	'heat_haze.c',
-	'rts_spectator.c',
-	'rts_grid.c',
-	'difficulty_titan.c',
-	'wave_scripts.c',
-	'max_vehicles.c',
-	'unpurchasable.c',
 	# 'rts_buildable.c',
 
-	# balance changes
+	## balance changes
 	# 'spawn_protection.c',
 	# 'musket_reload.c',
 	# 'musket_zoom.c',
